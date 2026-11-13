@@ -266,3 +266,25 @@ test('PolyBLEP suppresses aliased third-harmonic energy for saw and square at mu
     }
   }
 });
+
+
+test('Virtual Analog parameters set defaults for new voices and master level for rendering', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  const parameters = engine.setParameters({
+    'global.master-level': 0.25,
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.amp-release': 0.01,
+  });
+  assert.equal(parameters['engine.virtual-analog.osc-wave'], 'sine');
+  engine.noteOn({ id: 'parameter-voice', note: 69, frequency: 440 });
+  assert.equal(engine.getVoice('parameter-voice').waveform, 'sine');
+  assert.equal(engine.getVoice('parameter-voice').envelope.sustain, 1);
+  const output = new Float32Array(256);
+  engine.render(output);
+  assert.ok(Math.max(...output.map(Math.abs)) <= 0.251);
+  assert.throws(() => engine.setParameters({ 'global.master-level': 1.5 }), /range/i);
+  assert.equal(engine.getParameters()['global.master-level'], 0.25);
+});
