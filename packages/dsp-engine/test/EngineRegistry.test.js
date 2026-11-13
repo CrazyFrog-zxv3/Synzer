@@ -37,3 +37,12 @@ test('registry returns immutable metadata snapshots', () => {
   assert.ok(Object.isFrozen(entries[0]));
   assert.throws(() => { entries[0].label = 'Changed'; }, TypeError);
 });
+
+test('default registry constructs the existing Virtual Analog engine', async () => {
+  const { createDefaultEngineRegistry } = await import('../src/core/EngineRegistry.js');
+  const registry = createDefaultEngineRegistry();
+  const engine = registry.create('virtual-analog', { sampleRate: 48000, maxVoices: 4 });
+  assert.equal(engine.sampleRate, 48000);
+  assert.equal(engine.maxVoices, 4);
+  assert.equal(registry.has('virtual-analog'), true);
+});
