@@ -8,6 +8,7 @@ export class SynzerEngine {
     this.context = null;
     this.node = null;
     this.initPromise = null;
+    this.resumePromise = null;
     this.voiceSequence = 0;
     this.handles = new Map();
     this.noteStacks = new Map();
@@ -17,7 +18,31 @@ export class SynzerEngine {
 
   async initialize() {
     if (this.processorFailure) throw this.processorFailure;
-    if (this.node) return;
+    if (this.node) {
+      const context = this.context;
+      const node = this.node;
+      const generation = this.lifecycleGeneration;
+      if (!context || context.state === 'closed') {
+        throw new Error('AudioContext is closed while the audio node is still attached.');
+      }
+      if (context.state === 'suspended') {
+        if (!this.resumePromise) {
+          const resuming = (async () => {
+            await context.resume();
+            if (generation !== this.lifecycleGeneration || this.context !== context || this.node !== node || context.state === 'closed') {
+              throw new Error('Audio engine was closed during resume.');
+            }
+          })();
+          this.resumePromise = resuming;
+        }
+        const resuming = this.resumePromise;
+        try { await resuming; }
+        finally {
+          if (this.resumePromise === resuming) this.resumePromise = null;
+        }
+      }
+      return;
+    }
     if (this.initPromise) return this.initPromise;
     const generation = this.lifecycleGeneration;
     const context = this.context ?? this.audioContextFactory();
@@ -126,6 +151,7 @@ export class SynzerEngine {
     this.node = null;
     this.context = null;
     this.initPromise = null;
+    this.resumePromise = null;
     this.processorFailure = null;
     if (node) { node.disconnect(); node.port.close(); }
     this.handles.clear();
