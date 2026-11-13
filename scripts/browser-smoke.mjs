@@ -41,10 +41,12 @@ try {
   await page.goto(`${baseUrl}/index.html`);
   const firstKey = page.locator('#keyboard .key').first();
   await firstKey.scrollIntoViewIfNeeded();
-  await firstKey.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 });
+  const keyBox = await firstKey.boundingBox();
+  await page.mouse.move(keyBox.x + keyBox.width / 2, keyBox.y + keyBox.height / 2);
+  await page.mouse.down();
   await page.locator('#message').filter({ hasText: /Nota MIDI 60 ativa/ }).waitFor({ timeout: 15000 });
   assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
-  await firstKey.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 0 });
+  await page.mouse.up();
   assert.deepEqual(pageErrors, [], `Browser page errors: ${pageErrors.join('; ')}`);
 
   process.stdout.write(JSON.stringify({
