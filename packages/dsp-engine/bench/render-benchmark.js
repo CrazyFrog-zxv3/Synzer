@@ -23,6 +23,9 @@ engine.setParameters({
   'engine.virtual-analog.filter-env-decay': 30,
   'engine.virtual-analog.filter-env-sustain': 1,
   'engine.virtual-analog.filter-env-amount': 24,
+  'engine.virtual-analog.lfo1-rate': 5,
+  'engine.virtual-analog.lfo1-waveform': 'sine',
+  'engine.virtual-analog.lfo1-amount': 12,
 });
 
 for (let index = 0; index < voiceCount; index++) {
@@ -67,6 +70,7 @@ console.log(JSON.stringify({
   waveforms: 'saw/square/sine mixed',
   filter: 'TPT lowpass, 2.4 kHz, Q 4, per voice',
   filterEnvelope: 'active bipolar +24 semitones, 30 s attack, per voice',
+  lfo: '5 Hz sine, +12 semitones to filter cutoff, per voice',
   measuredBlocks,
   meanMsPerBlock: Number(mean.toFixed(5)),
   p95BatchMsPerBlock: Number(p95.toFixed(5)),

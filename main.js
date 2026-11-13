@@ -100,6 +100,9 @@ function readSynthParameters() {
     'engine.virtual-analog.filter-env-sustain': Number(document.querySelector('#filter-env-sustain').value) / 100,
     'engine.virtual-analog.filter-env-release': Number(document.querySelector('#filter-env-release').value) / 1000,
     'engine.virtual-analog.filter-env-amount': Number(document.querySelector('#filter-env-amount').value),
+    'engine.virtual-analog.lfo1-rate': Number(document.querySelector('#lfo1-rate').value) / 100,
+    'engine.virtual-analog.lfo1-waveform': document.querySelector('#lfo1-waveform').value,
+    'engine.virtual-analog.lfo1-amount': Number(document.querySelector('#lfo1-amount').value),
   };
 }
 
@@ -340,6 +343,39 @@ for (const [id, unit] of [
 }
 updateFilterEnvelopeGraph();
 
+function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-waveform').value) {
+  const paths = {
+    sine: 'M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90',
+    triangle: 'M0 170 L80 10 L160 170 L240 10 L320 170 L400 10 L480 170 L560 10 L640 170',
+    square: 'M0 150 H80 V30 H160 V150 H240 V30 H320 V150 H400 V30 H480 V150 H560 V30 H640',
+    'saw-up': 'M0 150 L80 30 V150 L160 30 V150 L240 30 V150 L320 30 V150 L400 30 V150 L480 30 V150 L560 30 V150 L640 30',
+    'saw-down': 'M0 30 L80 150 V30 L160 150 V30 L240 150 V30 L320 150 V30 L400 150 V30 L480 150 V30 L560 150 V30 L640 150',
+  };
+  document.querySelector('#lfo1-wave-path').setAttribute('d', paths[waveform] ?? paths.sine);
+}
+
+const lfoWaveform = document.querySelector('#lfo1-waveform');
+const lfoRate = document.querySelector('#lfo1-rate');
+const lfoRateOutput = document.querySelector('#lfo1-rate-value');
+const lfoAmount = document.querySelector('#lfo1-amount');
+const lfoAmountOutput = document.querySelector('#lfo1-amount-value');
+lfoWaveform.addEventListener('change', () => {
+  updateLfoWaveformGraph();
+  applySynthParameters();
+});
+lfoRate.addEventListener('input', () => {
+  lfoRateOutput.value = `${(Number(lfoRate.value) / 100).toFixed(2)} Hz`;
+  lfoRateOutput.textContent = lfoRateOutput.value;
+  applySynthParameters();
+});
+lfoAmount.addEventListener('input', () => {
+  const amount = Number(lfoAmount.value);
+  lfoAmountOutput.value = `${amount > 0 ? '+' : ''}${amount} st`;
+  lfoAmountOutput.textContent = lfoAmountOutput.value;
+  applySynthParameters();
+});
+updateLfoWaveformGraph();
+
 const patchNameInput = document.querySelector('#patch-name');
 const patchTitle = document.querySelector('#current-patch-title');
 const patchSelect = document.querySelector('#patch-select');
@@ -408,6 +444,14 @@ loadPatchButton.addEventListener('click', () => {
       output.textContent = output.value;
     }
     updateFilterEnvelopeGraph();
+    lfoWaveform.value = parameters['engine.virtual-analog.lfo1-waveform'];
+    lfoRate.value = String(Math.round(parameters['engine.virtual-analog.lfo1-rate'] * 100));
+    lfoRateOutput.value = `${parameters['engine.virtual-analog.lfo1-rate'].toFixed(2)} Hz`;
+    lfoRateOutput.textContent = lfoRateOutput.value;
+    lfoAmount.value = String(parameters['engine.virtual-analog.lfo1-amount']);
+    lfoAmountOutput.value = `${parameters['engine.virtual-analog.lfo1-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.lfo1-amount']} st`;
+    lfoAmountOutput.textContent = lfoAmountOutput.value;
+    updateLfoWaveformGraph();
     for (const [id, unit] of [['attack', 'ms'], ['decay', 'ms'], ['sustain', '%'], ['release', 'ms']]) {
       const input = document.querySelector(`#${id}`);
       const output = document.querySelector(`#${id}-value`);

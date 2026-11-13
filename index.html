@@ -379,7 +379,37 @@
           <div class="roadmap"><div class="roadmap-mark">⌘</div><div><h3>MODULATION MATRIX</h3><p>As rotas entre fontes e destinos ainda não fazem parte do motor DSP atual. Esta área fica reservada para uma matriz por camada, com quantidades bipolares e edição direta.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
         </section>
         <section class="view" data-view="modifiers" role="tabpanel" hidden>
-          <div class="roadmap"><div class="roadmap-mark">∿</div><div><h3>MODIFIERS</h3><p>LFOs, arpejador e sequenciador pertencem à próxima etapa de arquitetura. Nenhum controle desta tela altera o áudio ainda.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
+          <div class="module">
+            <div class="module-head"><div><h3 class="module-title">LFO 01 · LOW FREQUENCY OSCILLATOR</h3><p class="module-subtitle">Oscilador de baixa frequência · retrigger por voz</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <svg class="scope" viewBox="0 0 640 180" preserveAspectRatio="none" role="img" aria-label="Forma de onda do LFO">
+              <path class="scope-axis" d="M0 90H640 M0 45H640 M0 135H640 M80 0V180 M160 0V180 M240 0V180 M320 0V180 M400 0V180 M480 0V180 M560 0V180"/>
+              <path id="lfo1-wave-path" class="scope-wave" d="M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90"/>
+            </svg>
+            <div class="scope-footer"><span>−1.0</span><span>LFO CYCLE</span><span>+1.0</span></div>
+            <div class="control-info" style="margin-top:12px">
+              <div class="info-tile"><span>ROUTE</span><strong>LFO 01 → FILTER CUTOFF</strong></div>
+              <div class="info-tile"><span>VOICE MODE</span><strong>RETRIGGER / PER VOICE</strong></div>
+            </div>
+            <div class="env-controls" style="margin-top:12px">
+              <div class="control">
+                <div class="control-top"><label for="lfo1-waveform">WAVEFORM</label></div>
+                <select id="lfo1-waveform" aria-label="LFO waveform" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="sine">SINE</option><option value="triangle">TRIANGLE</option><option value="square">SQUARE</option><option value="saw-up">SAW UP</option><option value="saw-down">SAW DOWN</option>
+                </select>
+              </div>
+              <div class="control">
+                <div class="control-top"><label for="lfo1-rate">RATE</label><output id="lfo1-rate-value">1.00 Hz</output></div>
+                <input id="lfo1-rate" type="range" min="5" max="2000" step="5" value="100"/>
+                <p class="control-hint">0.05–20 Hz · free rate, no tempo sync</p>
+              </div>
+              <div class="control">
+                <div class="control-top"><label for="lfo1-amount">FILTER MODULATION</label><output id="lfo1-amount-value">0 st</output></div>
+                <input id="lfo1-amount" type="range" min="-48" max="48" step="1" value="0"/>
+                <p class="control-hint">Bipolar semitone depth · soma com EG 02</p>
+              </div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">A profundidade zero desativa a modulação audível, mas o oscilador continua avançando. A matriz de destinos múltiplos ainda é planejada.</p>
+          </div>
         </section>
         <section class="view" data-view="global" role="tabpanel" hidden>
           <div class="module">
@@ -450,7 +480,7 @@
     <section class="metrics" aria-label="Diagnóstico do motor">
       <div class="metric"><span>HELD KEYS</span><strong id="voice-count">0</strong></div>
       <div class="metric"><span>AUDIO ENGINE</span><strong id="worklet-state">NOT INITIALIZED</strong></div>
-      <div class="metric"><span>DSP</span><strong>POLYBLEP / ADSR</strong></div>
+      <div class="metric"><span>DSP</span><strong>POLYBLEP / ADSR / TPT / LFO</strong></div>
     </section>
     <p id="message" role="status" aria-live="polite">Pronto. O áudio é inicializado no primeiro toque.</p>
     <footer class="footer">SYNZER · UI FOUNDATION 0.1.0 · Motor atual: 1 oscilador virtual analógico por voz, ADSR, filtro TPT multimodo com envelope dedicado e até 12 vozes. Wavetable, FM, granular, matriz de modulação, LFOs e efeitos ainda não estão implementados.</footer>

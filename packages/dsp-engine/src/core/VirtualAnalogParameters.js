@@ -121,6 +121,30 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
     step: 0.1,
     unit: 'semitones',
   }),
+  defineParameter({
+    id: 'engine.virtual-analog.lfo1-rate',
+    type: 'number',
+    defaultValue: 1,
+    min: 0.05,
+    max: 20,
+    step: 0.01,
+    unit: 'Hz',
+  }),
+  defineParameter({
+    id: 'engine.virtual-analog.lfo1-waveform',
+    type: 'enum',
+    defaultValue: 'sine',
+    choices: ['sine', 'triangle', 'square', 'saw-up', 'saw-down'],
+  }),
+  defineParameter({
+    id: 'engine.virtual-analog.lfo1-amount',
+    type: 'number',
+    defaultValue: 0,
+    min: -48,
+    max: 48,
+    step: 0.1,
+    unit: 'semitones',
+  }),
 ]);
 
 export function createDefaultVirtualAnalogParameters() {

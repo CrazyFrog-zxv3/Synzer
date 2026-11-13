@@ -178,3 +178,19 @@ The new envelope parameters are part of the existing Virtual Analog parameter re
 The render benchmark now includes a deliberately long, continuously moving filter-envelope ramp across 12 voices, exercising coefficient updates rather than measuring only a static filter.
 
 Limit: cutoff modulation currently recalculates TPT coefficients per sample and per active voice while the envelope is moving. The CI benchmark measures this on its Linux x64 runner; ARM64/Android profiling remains required before deciding whether a coefficient lookup table or block-rate ramp is necessary.
+
+
+## LFO 01 — per-voice low-frequency oscillator
+
+A first LFO source is now implemented and routed to the Virtual Analog filter cutoff. The oscillator is retriggered per voice at phase 0 and continues advancing even when its modulation amount is zero, so enabling depth during a held note does not reset phase.
+
+Supported waveforms: sine, triangle, square, saw-up and saw-down. Rate range: 0.05–20 Hz. Depth: −48 to +48 semitones. The LFO is bipolar and exponential in frequency; its semitone contribution is summed with the independent filter-envelope contribution before cutoff clamping.
+
+Parameter IDs:
+- `engine.virtual-analog.lfo1-rate`
+- `engine.virtual-analog.lfo1-waveform`
+- `engine.virtual-analog.lfo1-amount`
+
+Rate/waveform/depth changes update active voices while preserving oscillator phase. LFO depth defaults to zero, so existing patches remain sonically unchanged. The source is currently hard-routed to filter cutoff; the general modulation matrix, additional destinations, tempo sync, phase offset, fade-in/delay, and global/free-running LFO modes are not implemented.
+
+The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a waveform scope. Patch save/load includes the three LFO parameters. Browser smoke verifies persistence/restoration; unit tests verify waveform polarity/range, frequency, phase preservation, per-voice retrigger and live filter modulation.
