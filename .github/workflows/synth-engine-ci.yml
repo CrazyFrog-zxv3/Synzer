@@ -7,6 +7,8 @@ on:
     branches: [main]
     paths:
       - 'packages/dsp-engine/**'
+      - 'tests/browser/**'
+      - 'scripts/browser-smoke.mjs'
       - 'package.json'
       - '.github/workflows/synth-engine-ci.yml'
   workflow_dispatch:
@@ -34,3 +36,11 @@ jobs:
           node --check packages/dsp-engine/src/core/SynzerEngine.js
           node --check packages/dsp-engine/src/core/VoiceEngine.js
           node --check packages/dsp-engine/src/worklets/synzer-processor.js
+          node --check tests/browser/smoke.js
+          node --check scripts/browser-smoke.mjs
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.56.0
+          npx playwright install --with-deps chromium
+      - name: Run real-browser audio integration test
+        run: npm run test:browser
