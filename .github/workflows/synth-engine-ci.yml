@@ -1,0 +1,34 @@
+name: SYNZER Synth Engine CI
+
+on:
+  push:
+    branches: [feature/synth-*]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/dsp-engine/**'
+      - 'package.json'
+      - '.github/workflows/synth-engine-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run DSP regression tests
+        run: npm test
+      - name: Check browser entry points
+        run: |
+          node --check main.js
+          node --check packages/dsp-engine/src/core/SynzerEngine.js
+          node --check packages/dsp-engine/src/core/VoiceEngine.js
+          node --check packages/dsp-engine/src/worklets/synzer-processor.js
