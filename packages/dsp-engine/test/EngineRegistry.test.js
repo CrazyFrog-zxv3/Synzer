@@ -25,7 +25,7 @@ test('registry rejects duplicate identifiers and unavailable factories', () => {
   const registry = new EngineRegistry();
   registry.register({ id: 'virtual-analog', label: 'Virtual Analog', status: 'available', create: () => ({}) });
   assert.throws(() => registry.register({ id: 'virtual-analog', label: 'Duplicate', status: 'available', create: () => ({}) }), /already registered/i);
-  assert.throws(() => registry.register({ id: 'fm', label: 'FM', status: 'planned' }), /factory/i);
+  assert.throws(() => registry.register({ id: 'fm', label: 'FM', status: 'planned' }), /Only available engines/i);
 });
 
 test('registry returns immutable metadata snapshots', () => {
