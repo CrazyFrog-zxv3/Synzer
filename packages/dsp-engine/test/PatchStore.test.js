@@ -109,3 +109,18 @@ test('patch store rejects malformed storage and unsupported engines on apply', (
   };
   assert.throws(() => applyVirtualAnalogPatch(unsupported), /one enabled Virtual Analog/i);
 });
+
+
+test('Virtual Analog patch persists pitch modulation route amounts and enable flags', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.eg-osc1-pitch-amount': 12,
+    'engine.virtual-analog.eg-osc1-pitch-enabled': false,
+    'engine.virtual-analog.lfo-osc2-pitch-amount': -7.5,
+    'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
+  });
+  const parameters = applyVirtualAnalogPatch(patch);
+  assert.equal(parameters['engine.virtual-analog.eg-osc1-pitch-amount'], 12);
+  assert.equal(parameters['engine.virtual-analog.eg-osc1-pitch-enabled'], false);
+  assert.equal(parameters['engine.virtual-analog.lfo-osc2-pitch-amount'], -7.5);
+  assert.equal(parameters['engine.virtual-analog.lfo-osc2-pitch-enabled'], true);
+});
