@@ -1,0 +1,8 @@
+{
+  "name": "synzer-synth-workbench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
