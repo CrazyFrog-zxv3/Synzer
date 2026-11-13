@@ -69,6 +69,7 @@ try {
     input.value = '90';
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
+  await page.locator('[data-tab="waveform"]').click();
   await page.locator('[data-wave="sine"]').click();
   await page.locator('[data-tab="global"]').click();
   await page.locator('#filter-mode').selectOption('highpass');
