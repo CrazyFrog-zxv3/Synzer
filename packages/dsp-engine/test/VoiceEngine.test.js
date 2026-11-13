@@ -335,3 +335,75 @@ test('each voice owns independent filter integrator state', () => {
   const b = engine.getVoice('filter-b').filterState;
   assert.notDeepEqual(a, b);
 });
+
+
+test('filter envelope opens the cutoff by its positive semitone depth and releases to base', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 500,
+    'engine.virtual-analog.filter-env-attack': 0.0005,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.filter-env-release': 0.0005,
+    'engine.virtual-analog.filter-env-amount': 24,
+  });
+  addVoice(engine, { id: 'filter-env-positive', frequency: 220 });
+  render(engine, 4);
+  const opened = engine.getVoice('filter-env-positive');
+  assert.equal(opened.filterEnvelope.stage, 'sustain');
+  assert.equal(opened.filterEnvelope.level, 1);
+  assert.ok(Math.abs(opened.filter.cutoff - 2000) < 1, 'two octaves should multiply cutoff by four');
+  assert.equal(engine.noteOff('filter-env-positive'), true);
+  render(engine, 4);
+  const released = engine.getVoice('filter-env-positive');
+  assert.equal(released.filterEnvelope.level, 0);
+  assert.ok(Math.abs(released.filter.cutoff - 500) < 1, 'release should return cutoff to its base value');
+});
+
+test('negative filter-envelope depth closes the cutoff by the requested semitones', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 2000,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.filter-env-amount': -24,
+  });
+  addVoice(engine, { id: 'filter-env-negative', frequency: 220 });
+  render(engine, 2);
+  assert.ok(Math.abs(engine.getVoice('filter-env-negative').filter.cutoff - 500) < 1);
+});
+
+test('filter-envelope defaults are neutral and its parameter updates affect active voices', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 1200,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+  });
+  addVoice(engine, { id: 'filter-env-live' });
+  render(engine, 1);
+  assert.equal(engine.getVoice('filter-env-live').filter.cutoff, 1200);
+  engine.setParameters({ 'engine.virtual-analog.filter-env-amount': 12 });
+  render(engine, 1);
+  assert.ok(Math.abs(engine.getVoice('filter-env-live').filter.cutoff - 2400) < 1);
+});
+
+test('filter-envelope state returned by getVoice is a defensive snapshot', () => {
+  const engine = createEngine();
+  addVoice(engine);
+  const snapshot = engine.getVoice('voice-1');
+  snapshot.filterEnvelope.level = 1;
+  snapshot.filterEnvelope.amount = 48;
+  assert.equal(engine.getVoice('voice-1').filterEnvelope.level, 0);
+  assert.equal(engine.getVoice('voice-1').filterEnvelope.amount, 0);
+});

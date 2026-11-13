@@ -18,6 +18,11 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.filter-mode',
     'engine.virtual-analog.filter-cutoff',
     'engine.virtual-analog.filter-resonance',
+    'engine.virtual-analog.filter-env-attack',
+    'engine.virtual-analog.filter-env-decay',
+    'engine.virtual-analog.filter-env-sustain',
+    'engine.virtual-analog.filter-env-release',
+    'engine.virtual-analog.filter-env-amount',
   ]);
   assert.ok(VIRTUAL_ANALOG_PARAMETER_DEFINITIONS.every(Object.isFrozen));
 });
@@ -33,6 +38,11 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.filter-mode': 'off',
     'engine.virtual-analog.filter-cutoff': 12000,
     'engine.virtual-analog.filter-resonance': Math.SQRT1_2,
+    'engine.virtual-analog.filter-env-attack': 0.01,
+    'engine.virtual-analog.filter-env-decay': 0.3,
+    'engine.virtual-analog.filter-env-sustain': 0,
+    'engine.virtual-analog.filter-env-release': 0.25,
+    'engine.virtual-analog.filter-env-amount': 0,
   });
 });
 
@@ -62,4 +72,19 @@ test('filter parameter definitions validate modes, cutoff and resonance', () => 
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-mode': 'notch' }), /choice/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-cutoff': 10 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-resonance': 13 }), /range/i);
+});
+
+
+test('filter envelope validates ADSR ranges and bipolar semitone depth', () => {
+  const values = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.filter-env-attack': 0.5,
+    'engine.virtual-analog.filter-env-decay': 0.75,
+    'engine.virtual-analog.filter-env-sustain': 0.6,
+    'engine.virtual-analog.filter-env-release': 1.25,
+    'engine.virtual-analog.filter-env-amount': -36,
+  });
+  assert.equal(values['engine.virtual-analog.filter-env-amount'], -36);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-attack': -0.1 }), /range/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-sustain': 1.1 }), /range/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-amount': 49 }), /range/i);
 });

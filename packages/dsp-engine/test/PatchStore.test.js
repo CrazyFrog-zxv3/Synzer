@@ -28,6 +28,11 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
     'engine.virtual-analog.filter-mode': 'lowpass',
     'engine.virtual-analog.filter-cutoff': 1800,
     'engine.virtual-analog.filter-resonance': 2.5,
+    'engine.virtual-analog.filter-env-attack': 0.4,
+    'engine.virtual-analog.filter-env-decay': 0.6,
+    'engine.virtual-analog.filter-env-sustain': 0.35,
+    'engine.virtual-analog.filter-env-release': 0.8,
+    'engine.virtual-analog.filter-env-amount': -18,
   }, 'Warm Square');
   assert.equal(patch.name, 'Warm Square');
   assert.equal(patch.globalParameters['global.master-level'], 0.65);
@@ -36,6 +41,8 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-mode'], 'lowpass');
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-cutoff'], 1800);
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-resonance'], 2.5);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-env-attack'], 0.4);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-env-amount'], -18);
 });
 
 test('Virtual Analog patch application restores normalized engine parameters', () => {
@@ -49,6 +56,8 @@ test('Virtual Analog patch application restores normalized engine parameters', (
   assert.equal(parameters['engine.virtual-analog.amp-attack'], 0.01);
   assert.equal(parameters['engine.virtual-analog.filter-mode'], 'off');
   assert.equal(parameters['engine.virtual-analog.filter-cutoff'], 12000);
+  assert.equal(parameters['engine.virtual-analog.filter-env-amount'], 0);
+  assert.equal(parameters['engine.virtual-analog.filter-env-sustain'], 0);
 });
 
 test('local patch store saves, lists and loads without overwriting duplicate names', () => {
