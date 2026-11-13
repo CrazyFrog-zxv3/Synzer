@@ -65,9 +65,12 @@ try {
   await page.waitForTimeout(50);
   assert.match(await page.locator('#state').textContent(), /ENGINE CLOSED/,
     'pageshow não deve recriar ou retomar o áudio automaticamente');
-  await firstKey.click();
-  await page.waitForFunction(() => document.querySelector('#state')?.textContent.includes('ENGINE READY'));
-  assert.match(await page.locator('#message').textContent(), /Nota MIDI 60 ativa/);
+  const resumedKeyBox = await firstKey.boundingBox();
+  await page.mouse.move(resumedKeyBox.x + resumedKeyBox.width / 2, resumedKeyBox.y + resumedKeyBox.height / 2);
+  await page.mouse.down();
+  await page.locator('#message').filter({ hasText: /Nota MIDI 60 ativa/ }).waitFor({ timeout: 15000 });
+  assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
+  await page.mouse.up();
 
   assert.deepEqual(pageErrors, [], `Browser page errors: ${pageErrors.join('; ')}`);
 
