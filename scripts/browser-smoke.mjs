@@ -48,6 +48,31 @@ try {
   assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
   await page.mouse.up();
 
+  await page.locator('#master-level').evaluate((input) => {
+    input.value = '42';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('[data-wave="square"]').click();
+  await page.locator('#attack').evaluate((input) => {
+    input.value = '75';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('#patch-name').fill('Browser Check');
+  await page.locator('#save-patch').click();
+  await page.waitForFunction(() => document.querySelector('#patch-select')?.value === 'Browser Check');
+  assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
+  await page.locator('#master-level').evaluate((input) => {
+    input.value = '90';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('[data-wave="sine"]').click();
+  await page.locator('#load-patch').click();
+  assert.equal(await page.locator('#master-level').inputValue(), '42');
+  assert.equal(await page.locator('#attack').inputValue(), '75');
+  assert.equal(await page.locator('#waveform').inputValue(), 'square');
+  assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
+
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     document.dispatchEvent(new Event('visibilitychange'));
@@ -100,6 +125,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
+      'Controles de waveform/ADSR/master level foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,
