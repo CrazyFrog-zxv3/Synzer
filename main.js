@@ -77,15 +77,6 @@ function readWaveform() {
   return document.querySelector('#waveform').value;
 }
 
-function readEnvelope() {
-  return {
-    attack: Number(document.querySelector('#attack').value) / 1000,
-    decay: Number(document.querySelector('#decay').value) / 1000,
-    sustain: Number(document.querySelector('#sustain').value) / 100,
-    release: Number(document.querySelector('#release').value) / 1000,
-  };
-}
-
 function readSynthParameters() {
   return {
     'global.master-level': Number(document.querySelector('#master-level').value) / 100,
