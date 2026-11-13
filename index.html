@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101114" />
+  <title>SYNZER · DSP Core Lab</title>
+  <style>
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101114;color:#f1f2f4}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -20%,#282b35 0,transparent 52%),#101114}.shell{max-width:900px;margin:0 auto;padding:clamp(18px,4vw,36px);padding-bottom:calc(28px + env(safe-area-inset-bottom))}header,.panel-head{display:flex;align-items:center;justify-content:space-between;gap:16px}header{margin:8px 0 26px}.eyebrow,.metric-label{font-size:11px;letter-spacing:.16em;color:#9298a5;font-weight:700}.eyebrow{margin:0 0 8px}h1{font-size:clamp(30px,7vw,46px);letter-spacing:-.055em;margin:0}h2{font-size:17px;margin:0 0 5px}p{color:#a5aab4}.state{font-size:11px;font-weight:800;letter-spacing:.12em;border:1px solid #444955;padding:8px 10px;border-radius:999px;color:#c5c9d1}.state.on{border-color:#447d68;color:#8de0b8}.panel{background:linear-gradient(145deg,#1b1d23,#15171c);border:1px solid #30333c;border-radius:20px;padding:clamp(16px,3vw,26px);box-shadow:0 18px 50px #0004}.panel-head p{font-size:12px;margin:0}.secondary{border:1px solid #484d59;background:#242730;color:#e4e6eb;border-radius:10px;padding:12px 14px;font-weight:700;font-size:11px;letter-spacing:.08em;min-height:44px}.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:26px 0}.controls label{font-size:12px;color:#c3c7d0;display:grid;gap:10px}.controls output{color:#fff;font-variant-numeric:tabular-nums}.controls input{width:100%;accent-color:#b7a4ff}.controls select{width:100%;min-height:42px;border:1px solid #484d59;border-radius:9px;background:#242730;color:#f1f2f4;padding:8px 10px;font:inherit}.keyboard{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;touch-action:none;user-select:none}.key{height:clamp(92px,18vw,150px);border-radius:0 0 9px 9px;border:1px solid #c6c8cf;background:linear-gradient(#fff,#d8dbe2);color:#20232a;font-weight:800;display:flex;align-items-flex-end;justify-content:center;padding:0 0 12px;touch-action:none;user-select:none;-webkit-user-select:none}.key:active,.key.down{background:linear-gradient(#cfc2ff,#9682db);border-color:#e2d9ff;transform:translateY(2px)}.hint{font-size:12px;margin:16px 0 0}.diagnostics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.diagnostics>div{display:grid;gap:8px}.diagnostics strong{font-size:14px;overflow-wrap:anywhere}#message{min-height:24px;font-size:12px;margin:14px 4px}footer{font-size:11px;color:#777e8b;margin:22px 4px}@media(max-width:600px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.keyboard{grid-template-columns:repeat(6,minmax(0,1fr))}.key{height:105px}.diagnostics{grid-template-columns:1fr 1fr}.diagnostics>div:last-child{grid-column:1/-1}.panel-head{align-items:flex-start}.secondary{padding:10px}}
+
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><p class="eyebrow">SYNZER / LOCAL ENGINEERING BUILD</p><h1>DSP Core Lab</h1></div>
+      <span id="state" class="state">API OFF</span>
+    </header>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Virtual Analog » Saw / Square / Sine</h2><p>AudioWorklet · ADSR · 3 formas · 12 vozes</p></div><button id="stop-all" class="secondary">PARAR TUDO</button></div>
+      <div class="controls">
+        <label>Forma de onda<select id="waveform"><option value="saw">Saw · PolyBLEP</option><option value="square">Square · PolyBLEP</option><option value="sine">Sine</option></select></label>
+        <label>Attack <output id="attack-value">10 ms</output><input id="attack" type="range" min="0" max="1000" value="10" /></label>
+        <label>Decay <output id="decay-value">80 ms</output><input id="decay" type="range" min="0" max="2000" value="80" /></label>
+        <label>Sustain <output id="sustain-value">75%</output><input id="sustain" type="range" min="0" max="100" value="75" /></label>
+        <label>Release <output id="release-value">250 ms</output><input id="release" type="range" min="0" max="3000" value="250" /></label>
+      </div>
+      <div class="keyboard" id="keyboard" aria-label="Teclado virtual"></div>
+      <p class="hint">Toque e segure uma tecla. O teclado aceita multitouch. Solte para iniciar o release.</p>
+    </section>
+    <section class="panel diagnostics">
+      <div><span class="metric-label">NOTAS DISPARADAS</span><strong id="voice-count">0</strong></div>
+      <div><span class="metric-label">WORKLET</span><strong id="worklet-state">Não inicializado</strong></div>
+      <div><span class="metric-label">MOTOR</span><strong>PolyBLEP / ADSR</strong></div>
+    </section>
+    <p id="message" role="status">Pronto. O áudio será inicializado no primeiro toque.</p>
+    <footer>Build experimental 0.2.0 » Não representa validação em Android físico.</footer>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
