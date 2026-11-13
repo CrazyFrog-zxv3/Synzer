@@ -53,6 +53,7 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('[data-wave="square"]').click();
+  await page.locator('[data-tab="global"]').click();
   await page.locator('#filter-mode').selectOption('lowpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '350'; input.dispatchEvent(new Event('input', { bubbles: true })); });
