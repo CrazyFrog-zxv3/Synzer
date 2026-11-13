@@ -120,3 +120,19 @@ O melhor Synzer não é literalmente a soma de todos os sintetizadores existente
 - [Madrona Labs Kaivo](https://madronalabs.com/products/kaivo)
 - [Vital](https://vital.audio/)
 - [VCV Rack Manual](https://vcvrack.com/manual/)
+
+
+## 9. Primeiro contrato multi-engine implementado — 13/11/2026
+
+A branch de desenvolvimento agora contém o primeiro registry executável de motores:
+
+- `packages/dsp-engine/src/core/EngineRegistry.js`: catálogo de famílias, registry runtime, validação de identificadores, bloqueio de registro duplicado e criação apenas de motores com factory disponível.
+- `createDefaultEngineRegistry()`: registra o Virtual Analog existente como único motor disponível e constrói a instância real de `VoiceEngine`.
+- `packages/dsp-engine/src/worklets/synzer-processor.js`: instancia o motor atual por meio do registry, removendo a dependência direta do Worklet sobre a classe concreta.
+- `packages/dsp-engine/test/EngineRegistry.test.js`: testes para estado do catálogo, criação de engines, rejeição de duplicatas e motores planejados, metadados imutáveis e factory padrão.
+
+O catálogo reconhece Virtual Analog como disponível. Wavetable, FM/PM, aditiva, sample/multisample, granular, spectral e modelagem física continuam explicitamente planejados, sem implementação declarada.
+
+Este incremento é uma fundação arquitetural: ainda não oferece seleção de motores na interface, mistura entre motores, parâmetros universais, modulação ou presets multi-engine. A abstração já está conectada ao AudioWorklet, mas o runtime continua usando somente o Virtual Analog.
+
+Validação pendente após os commits deste incremento: execução confirmada da suíte Node e do Chromium CI. A leitura dos arquivos no GitHub confirma persistência, mas não substitui execução dos testes.
