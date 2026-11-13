@@ -81,6 +81,18 @@
     .eyebrow { margin: 0 0 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
     .patch-title { margin: 0; font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
     .patch-id { color: var(--accent-2); font-size: 10px; font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
+    .patch-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+    .patch-name, .patch-select {
+      min-height: 40px; min-width: 0; max-width: 150px; padding: 0 10px;
+      border: 1px solid var(--line); border-radius: 8px; background: #121923; color: var(--text);
+      font-size: 11px;
+    }
+    .patch-action {
+      min-height: 40px; padding: 0 12px; border: 1px solid #66577f; border-radius: 8px;
+      background: linear-gradient(180deg, #393047, #262235); color: #e4d7ff;
+      font-size: 9px; font-weight: 850; letter-spacing: .08em; cursor: pointer;
+    }
+    .patch-action.secondary { border-color: var(--line); background: #202735; color: #b9c4d4; }
     .editor {
       overflow: hidden; margin-top: 12px; border: 1px solid var(--line); border-radius: 18px;
       background: linear-gradient(145deg, #191f2a, #141923);
@@ -223,6 +235,10 @@
     .footer { padding: 13px 4px 0; color: #657184; font-size: 9px; line-height: 1.5; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 720px) {
+      .patch-strip { align-items: flex-start; flex-direction: column; }
+      .patch-actions { width: 100%; justify-content: flex-start; }
+      .patch-name { flex: 1 1 130px; max-width: none; }
+      .patch-select { flex: 1 1 130px; max-width: none; }
       .app-shell { padding: 10px 10px calc(22px + env(safe-area-inset-bottom)); }
       .module-grid, .envelope-layout { grid-template-columns: 1fr; }
       .scope { height: 150px; }
@@ -258,8 +274,15 @@
     </header>
 
     <section class="patch-strip" aria-label="Patch atual">
-      <div class="patch-meta"><p class="eyebrow">CURRENT PATCH · 001</p><h1 class="patch-title">Initial Analog</h1></div>
-      <div class="patch-id">VA / POLY</div>
+      <div class="patch-meta"><p class="eyebrow">CURRENT PATCH · LOCAL</p><h1 id="current-patch-title" class="patch-title">Initial Analog</h1></div>
+      <div class="patch-actions">
+        <label class="visually-hidden" for="patch-name">Nome do patch</label>
+        <input id="patch-name" class="patch-name" type="text" maxlength="48" value="Initial Analog" aria-label="Nome do patch" />
+        <button id="save-patch" class="patch-action" type="button">SAVE PATCH</button>
+        <label class="visually-hidden" for="patch-select">Patches salvos</label>
+        <select id="patch-select" class="patch-select" aria-label="Patches salvos"><option value="">Saved patches</option></select>
+        <button id="load-patch" class="patch-action secondary" type="button">LOAD</button>
+      </div>
     </section>
 
     <section class="editor" aria-label="Editor do sintetizador">
