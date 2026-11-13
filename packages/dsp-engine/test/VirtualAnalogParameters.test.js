@@ -26,6 +26,8 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.lfo1-rate',
     'engine.virtual-analog.lfo1-waveform',
     'engine.virtual-analog.lfo1-amount',
+    'engine.virtual-analog.filter-env-route-enabled',
+    'engine.virtual-analog.lfo1-route-enabled',
   ]);
   assert.ok(VIRTUAL_ANALOG_PARAMETER_DEFINITIONS.every(Object.isFrozen));
 });
@@ -49,6 +51,8 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.lfo1-rate': 1,
     'engine.virtual-analog.lfo1-waveform': 'sine',
     'engine.virtual-analog.lfo1-amount': 0,
+    'engine.virtual-analog.filter-env-route-enabled': true,
+    'engine.virtual-analog.lfo1-route-enabled': true,
   });
 });
 
@@ -108,4 +112,17 @@ test('LFO parameter definitions validate rate, waveform and bipolar depth', () =
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-rate': 0 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-waveform': 'noise' }), /choice/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-amount': 49 }), /range/i);
+});
+
+
+test('modulation route enable flags are typed booleans', () => {
+  const values = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.filter-env-route-enabled': false,
+    'engine.virtual-analog.lfo1-route-enabled': true,
+  });
+  assert.equal(values['engine.virtual-analog.filter-env-route-enabled'], false);
+  assert.equal(values['engine.virtual-analog.lfo1-route-enabled'], true);
+  assert.throws(() => normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.filter-env-route-enabled': 'false',
+  }), /boolean/i);
 });

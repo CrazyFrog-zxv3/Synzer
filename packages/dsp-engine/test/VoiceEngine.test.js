@@ -458,3 +458,32 @@ test('each voice owns an independent retriggered LFO phase', () => {
   assert.equal(engine.getVoice('lfo-b').lfo.phase, 0);
   assert.notEqual(engine.getVoice('lfo-a').lfo.phase, engine.getVoice('lfo-b').lfo.phase);
 });
+
+
+test('modulation matrix independently enables or disables EG and LFO routes to filter cutoff', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 1000,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.filter-env-amount': 12,
+    'engine.virtual-analog.filter-env-route-enabled': false,
+    'engine.virtual-analog.lfo1-rate': 2,
+    'engine.virtual-analog.lfo1-waveform': 'square',
+    'engine.virtual-analog.lfo1-amount': 12,
+    'engine.virtual-analog.lfo1-route-enabled': true,
+  });
+  addVoice(engine, { id: 'matrix-routes' });
+  render(engine, 1);
+  assert.ok(Math.abs(engine.getVoice('matrix-routes').filter.cutoff - 2000) < 1,
+    'only the enabled LFO route should contribute');
+  engine.setParameters({
+    'engine.virtual-analog.filter-env-route-enabled': true,
+    'engine.virtual-analog.lfo1-route-enabled': false,
+  });
+  render(engine, 1);
+  assert.ok(Math.abs(engine.getVoice('matrix-routes').filter.cutoff - 2000) < 1,
+    'only the enabled filter-envelope route should contribute');
+});

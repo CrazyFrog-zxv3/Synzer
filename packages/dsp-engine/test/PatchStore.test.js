@@ -36,6 +36,8 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
     'engine.virtual-analog.lfo1-rate': 4.5,
     'engine.virtual-analog.lfo1-waveform': 'triangle',
     'engine.virtual-analog.lfo1-amount': 15,
+    'engine.virtual-analog.filter-env-route-enabled': false,
+    'engine.virtual-analog.lfo1-route-enabled': true,
   }, 'Warm Square');
   assert.equal(patch.name, 'Warm Square');
   assert.equal(patch.globalParameters['global.master-level'], 0.65);
@@ -49,6 +51,8 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-rate'], 4.5);
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-waveform'], 'triangle');
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-amount'], 15);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-env-route-enabled'], false);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-route-enabled'], true);
 });
 
 test('Virtual Analog patch application restores normalized engine parameters', () => {
@@ -67,6 +71,8 @@ test('Virtual Analog patch application restores normalized engine parameters', (
   assert.equal(parameters['engine.virtual-analog.lfo1-rate'], 1);
   assert.equal(parameters['engine.virtual-analog.lfo1-waveform'], 'sine');
   assert.equal(parameters['engine.virtual-analog.lfo1-amount'], 0);
+  assert.equal(parameters['engine.virtual-analog.filter-env-route-enabled'], true);
+  assert.equal(parameters['engine.virtual-analog.lfo1-route-enabled'], true);
 });
 
 test('local patch store saves, lists and loads without overwriting duplicate names', () => {
