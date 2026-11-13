@@ -28,7 +28,7 @@ function renderAudioLifecycle() {
   state.classList.toggle('on', isRunning && !document.hidden);
 
   if (document.hidden) {
-    stateLabel.textContent = isRunning ? 'APP BACKGROUND · AUDIO ACTIVE' : `APP BACKGROUND · AUDIO ${context.state.toUpperCase()}`;
+    stateLabel.textContent = isRunning ? 'APP BACKGROUND · ENGINE RUNNING' : `APP BACKGROUND · AUDIO ${context.state.toUpperCase()}`;
     return;
   }
 
