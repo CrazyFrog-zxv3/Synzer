@@ -23,17 +23,24 @@ button.addEventListener('click', async () => {
     analyser.fftSize = 4096;
     engine.node.connect(analyser);
 
+    engine.setParameters({
+      'global.master-level': 0.4,
+      'engine.virtual-analog.osc-wave': 'sine',
+      'engine.virtual-analog.amp-attack': 0,
+      'engine.virtual-analog.amp-decay': 0,
+      'engine.virtual-analog.amp-sustain': 1,
+      'engine.virtual-analog.amp-release': 0.08,
+    });
     const voiceIds = [];
     for (let index = 0; index < 12; index++) {
       voiceIds.push(await engine.noteOn({
         note: 48 + index,
         frequency: 220 * (2 ** (index / 12)),
         velocity: 0.35,
-        waveform: ['sine', 'saw', 'square'][index % 3],
-        envelope: { attack: 0, decay: 0, sustain: 1, release: 0.08 },
       }));
     }
 
+    engine.setParameters({ 'global.master-level': 0.25 });
     await new Promise((resolve) => setTimeout(resolve, 220));
     const samples = new Float32Array(analyser.fftSize);
     analyser.getFloatTimeDomainData(samples);
@@ -112,6 +119,7 @@ button.addEventListener('click', async () => {
       sampleRate,
       simultaneousVoices: voiceIds.length,
       audioWorkletLoaded: true,
+      liveParameterUpdates: 'passed',
       failedWorkletLoadRetry: 'passed',
       rapidNoteOnOffPairs: 40,
       repeatedNoteStressPairs: soakPairs,
