@@ -65,12 +65,13 @@ test('noteOn and noteOff preserve voice identifiers and message order', async ()
   const h = createHarness();
   try {
     const voiceId = await h.engine.noteOn({ note: 60, frequency: 261.6256, velocity: 0.7, waveform: 'sine' });
-    assert.equal(h.messages.length, 1);
-    assert.equal(h.messages[0].type, 'NOTE_ON');
-    assert.equal(h.messages[0].voice.id, voiceId);
-    assert.equal(h.messages[0].voice.note, 60);
+    assert.equal(h.messages.length, 2);
+    assert.equal(h.messages[0].type, 'SET_PARAMETERS');
+    assert.equal(h.messages[1].type, 'NOTE_ON');
+    assert.equal(h.messages[1].voice.id, voiceId);
+    assert.equal(h.messages[1].voice.note, 60);
     assert.equal(await h.engine.noteOff(voiceId), true);
-    assert.deepEqual(h.messages[1], { type: 'NOTE_OFF', voiceId });
+    assert.deepEqual(h.messages[2], { type: 'NOTE_OFF', voiceId });
     assert.equal(await h.engine.noteOff(voiceId), false);
   } finally { await h.engine.close(); h.restore(); }
 });
@@ -170,5 +171,27 @@ test('reuses the existing worklet node but resumes a suspended AudioContext', as
     assert.equal(h.context.state, 'running');
     assert.equal(h.counters.addModule, 1);
     assert.equal(h.counters.connect, 1);
+  } finally { await h.engine.close(); h.restore(); }
+});
+
+
+test('parameter updates are validated, retained before initialization and sent to the Worklet', async () => {
+  const h = createHarness();
+  try {
+    const beforeInit = h.engine.setParameters({
+      'global.master-level': 0.4,
+      'engine.virtual-analog.osc-wave': 'square',
+    });
+    assert.equal(beforeInit['global.master-level'], 0.4);
+    assert.equal(h.messages.length, 0);
+    await h.engine.initialize();
+    assert.equal(h.messages[0].type, 'SET_PARAMETERS');
+    assert.equal(h.messages[0].parameters['global.master-level'], 0.4);
+    assert.equal(h.messages[0].parameters['engine.virtual-analog.osc-wave'], 'square');
+    h.engine.setParameters({ 'global.master-level': 0.2 });
+    assert.equal(h.messages[1].type, 'SET_PARAMETERS');
+    assert.equal(h.messages[1].parameters['global.master-level'], 0.2);
+    assert.throws(() => h.engine.setParameters({ 'global.master-level': 2 }), /range/i);
+    assert.equal(h.engine.getParameters()['global.master-level'], 0.2);
   } finally { await h.engine.close(); h.restore(); }
 });
