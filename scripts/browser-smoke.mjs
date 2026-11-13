@@ -53,6 +53,9 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('[data-wave="square"]').click();
+  await page.locator('#filter-mode').selectOption('lowpass');
+  await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-resonance').evaluate((input) => { input.value = '350'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#attack').evaluate((input) => {
     input.value = '75';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -66,10 +69,16 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('[data-wave="sine"]').click();
+  await page.locator('#filter-mode').selectOption('highpass');
+  await page.locator('#filter-cutoff').evaluate((input) => { input.value = '800'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-resonance').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#load-patch').click();
   assert.equal(await page.locator('#master-level').inputValue(), '42');
   assert.equal(await page.locator('#attack').inputValue(), '75');
   assert.equal(await page.locator('#waveform').inputValue(), 'square');
+  assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
+  assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
+  assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -125,7 +134,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,
