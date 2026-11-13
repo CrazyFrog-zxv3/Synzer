@@ -104,10 +104,11 @@ export function normalizeParameterValues(definitions, values = {}) {
   if (!Array.isArray(definitions)) throw new TypeError('Parameter definitions must be an array.');
   assertRecord(values, 'Parameter values');
   const byId = new Map();
-  for (const definition of definitions) {
-    if (!definition || typeof definition.id !== 'string' || byId.has(definition.id)) {
+  for (const input of definitions) {
+    if (!input || typeof input.id !== 'string' || byId.has(input.id)) {
       throw new TypeError('Parameter definitions must have unique ids.');
     }
+    const definition = defineParameter(input);
     byId.set(definition.id, definition);
   }
   for (const id of Object.keys(values)) {
@@ -131,7 +132,7 @@ function normalizeParameterBag(value, expectedPrefix, label) {
     if (typeof parameterValue === 'number' && !Number.isFinite(parameterValue)) {
       throw new TypeError(`${label} values must be finite numbers when numeric.`);
     }
-    if (parameterValue !== null && !['number', 'string', 'boolean'].includes(typeof parameterValue)) {
+    if (!['number', 'string', 'boolean'].includes(typeof parameterValue)) {
       throw new TypeError(`${label} contains an unsupported parameter value.`);
     }
     result[id] = parameterValue;
