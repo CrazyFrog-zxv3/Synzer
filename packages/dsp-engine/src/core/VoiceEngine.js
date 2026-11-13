@@ -1,4 +1,5 @@
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+import { TptStateVariableFilter } from './TptStateVariableFilter.js';
 
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
@@ -71,7 +72,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope } } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -91,6 +92,12 @@ export class VoiceEngine {
       sustain: this.parameters['engine.virtual-analog.amp-sustain'],
       release: this.parameters['engine.virtual-analog.amp-release'],
     };
+    const filterParameters = {
+      mode: this.parameters['engine.virtual-analog.filter-mode'],
+      cutoff: this.parameters['engine.virtual-analog.filter-cutoff'],
+      resonance: this.parameters['engine.virtual-analog.filter-resonance'],
+    };
+    for (const voice of this.voices.values()) voice.filter.setParameters(filterParameters);
     return this.getParameters();
   }
 
@@ -107,6 +114,12 @@ export class VoiceEngine {
       throw new TypeError(`waveform must be one of: ${[...SUPPORTED_WAVEFORMS].join(', ')}.`);
     }
     const normalizedEnvelope = normalizeEnvelope(envelope);
+    const filter = new TptStateVariableFilter({
+      sampleRate: this.sampleRate,
+      mode: this.parameters['engine.virtual-analog.filter-mode'],
+      cutoff: this.parameters['engine.virtual-analog.filter-cutoff'],
+      resonance: this.parameters['engine.virtual-analog.filter-resonance'],
+    });
 
     if (this.activeVoiceCount >= this.maxVoices) {
       if (this.stealTailCount >= this.maxStealTails) throw new Error('Steal-tail capacity reached; retry after the current audio block.');
@@ -118,7 +131,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0,
+      stealRemaining: 0, stealStartLevel: 0, filter,
     };
     this.voices.set(id, voice);
     return id;
@@ -245,7 +258,8 @@ export class VoiceEngine {
         } else {
           oscillatorSample = (2 * voice.phase) - 1 - polyBlep(voice.phase, dt);
         }
-        mixed += oscillatorSample * voice.velocity * voice.envelopeLevel * voiceGain;
+        const filteredSample = voice.filter.process(oscillatorSample);
+        mixed += filteredSample * voice.velocity * voice.envelopeLevel * voiceGain;
         voice.phase += dt;
         if (voice.phase >= 1) voice.phase -= 1;
       }
