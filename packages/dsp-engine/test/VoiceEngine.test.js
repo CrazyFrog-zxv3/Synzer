@@ -301,7 +301,7 @@ test('Virtual Analog filter parameters update active voices in the live render p
     'engine.virtual-analog.filter-cutoff': 500,
     'engine.virtual-analog.filter-resonance': 0.707,
   });
-  addVoice(engine, { id: 'filter-live', frequency: 6000, waveform: 'sine' });
+  addVoice(engine, { id: 'filter-live', frequency: 3000, waveform: 'sine' });
   const before = engine.getVoice('filter-live').filter;
   assert.equal(before.mode, 'lowpass');
   assert.equal(before.cutoff, 500);
