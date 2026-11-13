@@ -54,8 +54,9 @@ try {
     checks: [
       'AudioContext iniciado por interação real',
       'AudioWorklet carregado no Chromium',
-      'Nota 440 Hz produziu sinal mensurável no AnalyserNode',
-      'AudioContext encerrado sem erro',
+      '12 vozes simultâneas produziram sinal mensurável no AnalyserNode',
+      'AudioContext suspendeu, retomou e fechou corretamente',
+      'Motor reinicializou após close sem reutilizar o contexto anterior',
       'Teclado da interface principal iniciou uma nota',
     ],
     audioHarness: JSON.parse(harnessDetails),
