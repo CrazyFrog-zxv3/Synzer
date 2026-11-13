@@ -387,11 +387,13 @@ export class VoiceEngine {
         modulationSources['filter-envelope'] = filterEnvelopeLevel;
         modulationSources['lfo-1'] = lfoValue;
         const semitones = this.modulationMatrix.computeDestination('filter-cutoff', modulationSources);
-        if (voice.filter.mode !== 'off' && semitones !== 0) {
-          const modulatedCutoff = Math.min(
-            this.sampleRate * 0.45,
-            Math.max(20, voice.filterBaseCutoff * (2 ** (semitones / 12))),
-          );
+        if (voice.filter.mode !== 'off') {
+          const modulatedCutoff = semitones === 0
+            ? voice.filterBaseCutoff
+            : Math.min(
+              this.sampleRate * 0.45,
+              Math.max(20, voice.filterBaseCutoff * (2 ** (semitones / 12))),
+            );
           voice.filter.setCutoff(modulatedCutoff);
         }
         // A voice can expire in the middle of this block while its reference remains

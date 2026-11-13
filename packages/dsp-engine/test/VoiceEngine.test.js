@@ -486,4 +486,11 @@ test('modulation matrix independently enables or disables EG and LFO routes to f
   render(engine, 1);
   assert.ok(Math.abs(engine.getVoice('matrix-routes').filter.cutoff - 2000) < 1,
     'only the enabled filter-envelope route should contribute');
+  engine.setParameters({
+    'engine.virtual-analog.filter-env-route-enabled': false,
+    'engine.virtual-analog.lfo1-route-enabled': false,
+  });
+  render(engine, 1);
+  assert.ok(Math.abs(engine.getVoice('matrix-routes').filter.cutoff - 1000) < 1,
+    'disabling all routes must restore the unmodulated base cutoff');
 });
