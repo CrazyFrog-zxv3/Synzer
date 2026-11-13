@@ -95,9 +95,9 @@ test('zero attack and decay reach sustain without a discontinuous invalid state'
 });
 
 test('attack and decay advance over the requested sample counts', () => {
-  const engine = createEngine({ sampleRate: 1000 });
+  const engine = createEngine();
   addVoice(engine, {
-    envelope: { attack: 0.004, decay: 0.004, sustain: 0.5, release: 0.01 },
+    envelope: { attack: 0.0005, decay: 0.0005, sustain: 0.5, release: 0.01 },
   });
   render(engine, 4);
   assert.equal(engine.getVoice('voice-1').stage, 'decay');
@@ -108,8 +108,8 @@ test('attack and decay advance over the requested sample counts', () => {
 });
 
 test('noteOff releases a voice and removes it after the release duration', () => {
-  const engine = createEngine({ sampleRate: 1000 });
-  addVoice(engine, { envelope: { attack: 0, decay: 0, sustain: 1, release: 0.004 } });
+  const engine = createEngine();
+  addVoice(engine, { envelope: { attack: 0, decay: 0, sustain: 1, release: 0.0005 } });
   render(engine, 8);
   assert.equal(engine.noteOff('voice-1'), true);
   assert.equal(engine.getVoice('voice-1').stage, 'release');
