@@ -62,7 +62,7 @@ export function applyVirtualAnalogPatch(input) {
 export function savePatch(storage, input) {
   const patch = validatePatch(input);
   const patches = readStoredPatches(storage);
-  if (patches.some((existing) => existing.name.toLocaleLowerCase() === patch.name.toLocaleLowerCase())) {
+  if (patches.some((existing) => existing.name.toLowerCase() === patch.name.toLowerCase())) {
     throw new Error(`Patch already exists: ${patch.name}`);
   }
   patches.push(patch);
