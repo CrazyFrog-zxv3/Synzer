@@ -59,7 +59,10 @@ export class VoiceEngine {
       attack: 0.01, decay: 0.3, sustain: 0, release: 0.25, amount: 0,
     };
     this.defaultLfo = { rate: 1, waveform: 'sine', amount: 0 };
-    this.modulationMatrix = new ModulationMatrix();
+    this.modulationMatrix = new ModulationMatrix([
+      { id: 'filter-eg-to-cutoff', source: 'filter-envelope', destination: 'filter-cutoff', amount: 0, enabled: true },
+      { id: 'lfo-1-to-cutoff', source: 'lfo-1', destination: 'filter-cutoff', amount: 0, enabled: true },
+    ]);
     this.voices = new Map();
     this.renderVoices = [];
     this.sequence = 0;

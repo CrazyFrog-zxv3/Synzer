@@ -389,6 +389,7 @@ lfoAmount.addEventListener('input', () => {
   const amount = Number(lfoAmount.value);
   lfoAmountOutput.value = `${amount > 0 ? '+' : ''}${amount} st`;
   lfoAmountOutput.textContent = lfoAmountOutput.value;
+  updateLfoWaveformGraph();
   applySynthParameters();
 });
 updateLfoWaveformGraph();

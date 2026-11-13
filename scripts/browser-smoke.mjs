@@ -65,10 +65,10 @@ try {
   await page.locator('#filter-env-amount').evaluate((input) => { input.value = '-24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-route-enabled').uncheck();
   await page.locator('#lfo1-route-enabled').check();
+  await page.locator('#lfo1-amount').evaluate((input) => { input.value = '15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('triangle');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#lfo1-amount').evaluate((input) => { input.value = '15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#attack').evaluate((input) => {
     input.value = '75';
     input.dispatchEvent(new Event('input', { bubbles: true }));

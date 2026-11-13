@@ -51,8 +51,7 @@ export class ModulationMatrix {
     if (index < 0) throw new Error(`Modulation route not found: ${id}`);
     const next = this.routes.map((route, routeIndex) =>
       routeIndex === index ? normalizeRoute({ ...route, ...changes }) : route);
-    this.routes = next;
-    return this.getRoutes();
+    return this.setRoutes(next);
   }
 
   computeDestination(destination, sourceValues = {}) {
@@ -63,7 +62,7 @@ export class ModulationMatrix {
     for (const route of this.routes) {
       if (!route.enabled || route.destination !== destination || route.amount === 0) continue;
       const value = sourceValues[route.source] ?? 0;
-      if (!Number.isFinite(value)) throw new TypeError(`Modulation source ${route.source} must be finite.`);
+      if (!Number.isFinite(value) || value < -1 || value > 1) throw new RangeError(`Modulation source ${route.source} must be between -1 and 1.`);
       total += value * route.amount;
     }
     return total;
