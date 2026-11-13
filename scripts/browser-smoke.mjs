@@ -49,6 +49,19 @@ try {
   await page.mouse.up();
   assert.deepEqual(pageErrors, [], `Browser page errors: ${pageErrors.join('; ')}`);
 
+  const viewportResults = [];
+  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape' }]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    const dimensions = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      appWidth: Math.round(document.querySelector('.app-shell').getBoundingClientRect().width),
+    }));
+    assert.ok(dimensions.documentWidth <= dimensions.viewportWidth + 1,
+      `Horizontal overflow in ${viewport.mode}: ${JSON.stringify(dimensions)}`);
+    viewportResults.push({ ...viewport, ...dimensions, horizontalOverflow: false });
+  }
+
   process.stdout.write(JSON.stringify({
     status: 'PASS',
     checks: [
@@ -62,6 +75,7 @@ try {
       'Teclado da interface principal iniciou uma nota',
     ],
     audioHarness: JSON.parse(harnessDetails),
+    responsiveViewports: viewportResults,
     pageErrors,
   }, null, 2) + '\n');
 } finally {
