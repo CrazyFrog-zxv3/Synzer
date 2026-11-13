@@ -6,7 +6,7 @@ test('LFO sine output follows its configured frequency and stays in bipolar rang
   const lfo = new LfoOscillator({ sampleRate: 8000, rate: 2, waveform: 'sine' });
   assert.ok(Math.abs(lfo.nextSample()) < 1e-12);
   let sample = 0;
-  for (let index = 0; index < 999; index++) sample = lfo.nextSample();
+  for (let index = 0; index < 1000; index++) sample = lfo.nextSample();
   assert.ok(Math.abs(sample - 1) < 1e-6);
   for (let index = 0; index < 3000; index++) {
     sample = lfo.nextSample();

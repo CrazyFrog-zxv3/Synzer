@@ -424,7 +424,7 @@ test('LFO modulates filter cutoff and crosses from positive to negative polarity
   render(engine, 1);
   assert.ok(Math.abs(engine.getVoice('lfo-filter').filter.cutoff - 2000) < 1,
     'positive square phase should raise cutoff by one octave');
-  render(engine, 2000);
+  render(engine, 2001);
   assert.ok(Math.abs(engine.getVoice('lfo-filter').filter.cutoff - 500) < 1,
     'negative square phase should lower cutoff by one octave');
 });
