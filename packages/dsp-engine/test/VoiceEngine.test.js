@@ -236,3 +236,33 @@ test('PolyBLEP saw reduces a folded upper-harmonic component versus a naive saw'
     `PolyBLEP probe (${correctedProbe}) should be less than half the naive reference (${naiveProbe})`,
   );
 });
+
+
+test('PolyBLEP suppresses aliased third-harmonic energy for saw and square at multiple sample rates', () => {
+  for (const sampleRate of [44100, 48000]) {
+    const frequency = sampleRate * 0.18;
+    const length = 5000;
+    const fundamentalBin = Math.round((frequency * length) / sampleRate);
+    const thirdHarmonicAliasBin = length - (3 * fundamentalBin);
+
+    for (const waveform of ['saw', 'square']) {
+      const corrected = renderSteadyVoice({ waveform, frequency, sampleRate, length });
+      const naive = new Float32Array(length);
+      let phase = 0;
+      const increment = frequency / sampleRate;
+      for (let index = 0; index < length; index++) {
+        naive[index] = waveform === 'saw' ? (2 * phase) - 1 : (phase < 0.5 ? 1 : -1);
+        phase += increment;
+        if (phase >= 1) phase -= 1;
+      }
+
+      const correctedAlias = spectralAmplitudeAtBin(corrected, thirdHarmonicAliasBin);
+      const naiveAlias = spectralAmplitudeAtBin(naive, thirdHarmonicAliasBin);
+      assert.ok(naiveAlias > 0.1, waveform + ' naive reference should expose alias energy');
+      assert.ok(
+        correctedAlias < naiveAlias * 0.45,
+        waveform + ' PolyBLEP alias should be below 45% of naive at ' + sampleRate + ' Hz',
+      );
+    }
+  }
+});
