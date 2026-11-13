@@ -47,6 +47,10 @@ button.addEventListener('click', async () => {
       'engine.virtual-analog.lfo1-waveform': 'sine',
       'engine.virtual-analog.lfo1-amount': 6,
       'engine.virtual-analog.lfo1-route-enabled': true,
+      'engine.virtual-analog.eg-osc1-pitch-amount': 5,
+      'engine.virtual-analog.eg-osc1-pitch-enabled': true,
+      'engine.virtual-analog.lfo-osc2-pitch-amount': -3,
+      'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
     });
     const voiceIds = [];
     for (let index = 0; index < 12; index++) {
@@ -140,7 +144,7 @@ button.addEventListener('click', async () => {
       oscillator2: 'enabled square at -1 octave',
       filterEnvelope: 'EG 02 active at +12 semitones',
       lfo: 'LFO 01 sine at 5 Hz and +6 semitones',
-      modulationMatrix: 'EG 02 + LFO 01 routes to filter cutoff',
+      modulationMatrix: 'EG 02 + LFO 01 routes to filter cutoff and independent OSC 01/02 pitch',
       failedWorkletLoadRetry: 'passed',
       rapidNoteOnOffPairs: 40,
       repeatedNoteStressPairs: soakPairs,
