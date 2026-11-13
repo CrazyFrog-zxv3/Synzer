@@ -13,7 +13,8 @@ class SynzerAudioProcessor extends AudioWorkletProcessor {
     });
     this.port.onmessage = ({ data }) => {
       try {
-        if (data?.type === 'NOTE_ON') this.engine.noteOn(data.voice);
+        if (data?.type === 'SET_PARAMETERS') this.engine.setParameters(data.parameters);
+        else if (data?.type === 'NOTE_ON') this.engine.noteOn(data.voice);
         else if (data?.type === 'NOTE_OFF') this.engine.noteOff(data.voiceId);
       } catch (error) {
         this.port.postMessage({
