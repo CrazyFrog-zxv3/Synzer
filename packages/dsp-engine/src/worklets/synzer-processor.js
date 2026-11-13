@@ -1,10 +1,11 @@
-import { VoiceEngine } from '../core/VoiceEngine.js';
+import { createDefaultEngineRegistry } from '../core/EngineRegistry.js';
 
 class SynzerAudioProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const config = options?.processorOptions ?? {};
-    this.engine = new VoiceEngine({
+    this.engineRegistry = createDefaultEngineRegistry();
+    this.engine = this.engineRegistry.create('virtual-analog', {
       sampleRate,
       maxVoices: config.maxVoices ?? 12,
       stealFadeSeconds: config.stealFadeSeconds ?? 0.005,
