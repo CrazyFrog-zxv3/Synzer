@@ -89,6 +89,7 @@ try {
   assert.equal(await page.locator('#patch-select').inputValue(), 'Browser Check',
     `Patch save failed: ${await page.locator('#message').textContent()}`);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
+  await page.locator('[data-tab="waveform"]').click();
   await page.locator('#osc2-enabled').uncheck();
   await page.locator('#osc2-wave').selectOption('sine');
   await page.locator('#osc2-level').evaluate((input) => { input.value = '10'; input.dispatchEvent(new Event('input', { bubbles: true })); });
