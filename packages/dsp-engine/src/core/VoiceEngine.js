@@ -376,6 +376,10 @@ export class VoiceEngine {
     for (const voice of this.voices.values()) renderVoices.push(voice);
 
     const voiceGain = this.voiceGain * this.masterLevel;
+    // Route coefficients are compiled when parameters change and snapshotted once
+    // per render quantum, keeping the per-sample path to two multiplies and one sum.
+    const filterEnvelopeCutoffAmount = this.modulationMatrix.filterEnvelopeCutoffAmount;
+    const lfoCutoffAmount = this.modulationMatrix.lfoCutoffAmount;
     for (let i = 0; i < left.length; i++) {
       let mixed = 0;
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
@@ -383,7 +387,7 @@ export class VoiceEngine {
         this.#advanceEnvelope(voice);
         const filterEnvelopeLevel = this.#advanceFilterEnvelope(voice);
         const lfoValue = voice.lfo.oscillator.nextSample();
-        const semitones = this.modulationMatrix.computeFilterCutoff(filterEnvelopeLevel, lfoValue);
+        const semitones = (filterEnvelopeLevel * filterEnvelopeCutoffAmount) + (lfoValue * lfoCutoffAmount);
         if (voice.filter.mode !== 'off') {
           const modulatedCutoff = semitones === 0
             ? voice.filterBaseCutoff
