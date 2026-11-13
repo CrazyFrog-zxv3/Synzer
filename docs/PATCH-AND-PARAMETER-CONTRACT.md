@@ -120,3 +120,41 @@ The UI now exposes a patch name, Save Patch, saved-patch selector and Load actio
 The current runtime intentionally accepts exactly one enabled Virtual Analog slot. Multi-engine patches are structurally representable by the schema but cannot be applied until the corresponding engines and mixer are implemented.
 
 Persistence is local to the browser profile/device. It is not cloud sync, backup, or cross-device transfer. Clearing browser site data can remove these patches.
+
+
+## TPT multimode filter runtime
+
+Module: `packages/dsp-engine/src/core/TptStateVariableFilter.js`
+
+The Virtual Analog voice signal path now includes a per-voice topology-preserving-transform state-variable filter (TPT SVF). It provides:
+
+- `off`: exact input bypass.
+- `lowpass`: second-order low-pass response.
+- `highpass`: second-order high-pass response.
+- `bandpass`: second-order band-pass response.
+
+The filter uses the TPT integrator formulation with precomputed coefficients. Cutoff is constrained to 20–20,000 Hz and internally limited to 45% of the active sample rate to avoid operation at Nyquist. Resonance is represented as Q from 0.5 to 12. Coefficient changes retain the integrator state; they do not reset the filter on every automation update. Each voice owns independent integrator state.
+
+### Parameter contract
+
+- `engine.virtual-analog.filter-mode`: enum `off|lowpass|highpass|bandpass`, default `off`.
+- `engine.virtual-analog.filter-cutoff`: 20–20,000 Hz, default 12,000 Hz.
+- `engine.virtual-analog.filter-resonance`: Q 0.5–12, default approximately 0.707.
+
+The default mode is OFF to preserve the pre-filter sound. Parameter updates are validated by the existing Virtual Analog parameter registry, transmitted through `SynzerEngine.setParameters()` and `SET_PARAMETERS`, and applied to active voices in the AudioWorklet. Newly triggered voices receive their own filter instance initialized from the current parameter snapshot.
+
+The GLOBAL panel now exposes mode, logarithmic cutoff and resonance controls. These values are part of the existing local patch format, so saving/loading patches also stores/restores the filter settings without changing the patch schema version.
+
+### Verification added
+
+- Spectral response tests for low-pass, high-pass and band-pass behavior.
+- Exact bypass test for OFF mode.
+- Finite-output stress test at high cutoff and resonance.
+- Parameter validation and integrator-state retention tests.
+- VoiceEngine tests for live parameter updates and independent per-voice state.
+- PatchStore tests for filter parameter persistence.
+- Chromium smoke test extended to save, change and restore filter mode, cutoff and resonance through the UI.
+
+### Current limits
+
+This is a second-order multimode SVF, not a full filter suite. No ladder, diode, comb, formant, drive/saturation, self-oscillation, oversampling or filter-envelope modulation is implemented. There is no filter visualization or modulation routing yet. The resonance/Q mapping is a direct DSP parameter, not a calibrated emulation of a specific analog circuit. Device-level CPU, latency and sound quality on Android/POCO remain unverified until tested on physical hardware.
