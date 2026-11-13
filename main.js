@@ -103,6 +103,8 @@ function readSynthParameters() {
     'engine.virtual-analog.lfo1-rate': Number(document.querySelector('#lfo1-rate').value) / 100,
     'engine.virtual-analog.lfo1-waveform': document.querySelector('#lfo1-waveform').value,
     'engine.virtual-analog.lfo1-amount': Number(document.querySelector('#lfo1-amount').value),
+    'engine.virtual-analog.filter-env-route-enabled': document.querySelector('#filter-env-route-enabled').checked,
+    'engine.virtual-analog.lfo1-route-enabled': document.querySelector('#lfo1-route-enabled').checked,
   };
 }
 
@@ -165,6 +167,7 @@ function updateFilterEnvelopeGraph() {
   const sustain = Number(document.querySelector('#filter-env-sustain').value) / 100;
   const release = Number(document.querySelector('#filter-env-release').value);
   const amount = Number(document.querySelector('#filter-env-amount').value);
+  const routeEnabled = document.querySelector('#filter-env-route-enabled').checked;
   const attackX = 28 + (attack / 3000) * 110;
   const decayX = attackX + 42 + (decay / 3000) * 120;
   const sustainY = 180 - (sustain * 145);
@@ -175,8 +178,9 @@ function updateFilterEnvelopeGraph() {
   document.querySelector('#filter-env-fill').setAttribute('d', `${path} Z`);
   const depth = document.querySelector('#filter-env-depth-readout');
   depth.textContent = `${amount > 0 ? '+' : ''}${amount} semitons`;
-  document.querySelector('#filter-env-polarity').textContent =
-    amount > 0 ? 'POSITIVE · OPEN' : amount < 0 ? 'NEGATIVE · CLOSE' : 'NEUTRAL';
+  document.querySelector('#filter-env-polarity').textContent = !routeEnabled
+    ? 'ROUTE DISABLED'
+    : amount > 0 ? 'POSITIVE · OPEN' : amount < 0 ? 'NEGATIVE · CLOSE' : 'NEUTRAL';
 }
 
 function syncHeldKeys() {
@@ -352,6 +356,9 @@ function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-wavefor
     'saw-down': 'M0 30 L80 150 V30 L160 150 V30 L240 150 V30 L320 150 V30 L400 150 V30 L480 150 V30 L560 150 V30 L640 150',
   };
   document.querySelector('#lfo1-wave-path').setAttribute('d', paths[waveform] ?? paths.sine);
+  const amount = Number(document.querySelector('#lfo1-amount').value);
+  const enabled = document.querySelector('#lfo1-route-enabled').checked;
+  document.querySelector('#lfo1-amount-readout').textContent = `${amount > 0 ? '+' : ''}${amount} st${enabled ? '' : ' · OFF'}`;
 }
 
 const lfoWaveform = document.querySelector('#lfo1-waveform');
@@ -359,6 +366,16 @@ const lfoRate = document.querySelector('#lfo1-rate');
 const lfoRateOutput = document.querySelector('#lfo1-rate-value');
 const lfoAmount = document.querySelector('#lfo1-amount');
 const lfoAmountOutput = document.querySelector('#lfo1-amount-value');
+const filterEnvRouteEnabled = document.querySelector('#filter-env-route-enabled');
+const lfoRouteEnabled = document.querySelector('#lfo1-route-enabled');
+filterEnvRouteEnabled.addEventListener('change', () => {
+  updateFilterEnvelopeGraph();
+  applySynthParameters();
+});
+lfoRouteEnabled.addEventListener('change', () => {
+  updateLfoWaveformGraph();
+  applySynthParameters();
+});
 lfoWaveform.addEventListener('change', () => {
   updateLfoWaveformGraph();
   applySynthParameters();
@@ -420,6 +437,8 @@ loadPatchButton.addEventListener('click', () => {
     document.querySelector('#decay').value = String(Math.round(parameters['engine.virtual-analog.amp-decay'] * 1000));
     document.querySelector('#sustain').value = String(Math.round(parameters['engine.virtual-analog.amp-sustain'] * 100));
     document.querySelector('#release').value = String(Math.round(parameters['engine.virtual-analog.amp-release'] * 1000));
+    filterEnvRouteEnabled.checked = parameters['engine.virtual-analog.filter-env-route-enabled'];
+    lfoRouteEnabled.checked = parameters['engine.virtual-analog.lfo1-route-enabled'];
     filterMode.value = parameters['engine.virtual-analog.filter-mode'];
     filterCutoff.value = String(Math.round(Math.log(parameters['engine.virtual-analog.filter-cutoff'] / 20) / Math.log(1000) * 1000));
     filterCutoffOutput.value = parameters['engine.virtual-analog.filter-cutoff'] >= 1000 ? `${(parameters['engine.virtual-analog.filter-cutoff'] / 1000).toFixed(2)} kHz` : `${Math.round(parameters['engine.virtual-analog.filter-cutoff'])} Hz`;

@@ -61,7 +61,10 @@ try {
   await page.locator('#filter-env-decay').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-release').evaluate((input) => { input.value = '700'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('[data-tab="matrix"]').click();
   await page.locator('#filter-env-amount').evaluate((input) => { input.value = '-24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-route-enabled').uncheck();
+  await page.locator('#lfo1-route-enabled').check();
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('triangle');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -94,11 +97,15 @@ try {
   await page.locator('#filter-env-decay').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '90'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-release').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-amount').evaluate((input) => { input.value = '36'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('square');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '1200'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('[data-tab="matrix"]').click();
+  await page.locator('#filter-env-amount').evaluate((input) => { input.value = '36'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-route-enabled').check();
   await page.locator('#lfo1-amount').evaluate((input) => { input.value = '-36'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#lfo1-route-enabled').uncheck();
+  await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#load-patch').click();
   assert.equal(await page.locator('#master-level').inputValue(), '42');
   assert.equal(await page.locator('#attack').inputValue(), '75');
@@ -114,6 +121,8 @@ try {
   assert.equal(await page.locator('#lfo1-waveform').inputValue(), 'triangle');
   assert.equal(await page.locator('#lfo1-rate').inputValue(), '450');
   assert.equal(await page.locator('#lfo1-amount').inputValue(), '15');
+  assert.equal(await page.locator('#filter-env-route-enabled').isChecked(), false);
+  assert.equal(await page.locator('#lfo1-route-enabled').isChecked(), true);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -175,7 +184,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro e Filter EG e LFO 01 foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro e Filter EG, LFO 01 e rotas da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

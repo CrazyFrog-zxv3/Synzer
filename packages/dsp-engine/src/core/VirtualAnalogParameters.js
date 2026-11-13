@@ -145,6 +145,16 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
     step: 0.1,
     unit: 'semitones',
   }),
+  defineParameter({
+    id: 'engine.virtual-analog.filter-env-route-enabled',
+    type: 'boolean',
+    defaultValue: true,
+  }),
+  defineParameter({
+    id: 'engine.virtual-analog.lfo1-route-enabled',
+    type: 'boolean',
+    defaultValue: true,
+  }),
 ]);
 
 export function createDefaultVirtualAnalogParameters() {

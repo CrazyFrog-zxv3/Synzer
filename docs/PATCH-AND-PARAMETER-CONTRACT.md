@@ -194,3 +194,18 @@ Parameter IDs:
 Rate/waveform/depth changes update active voices while preserving oscillator phase. LFO depth defaults to zero, so existing patches remain sonically unchanged. The source is currently hard-routed to filter cutoff; the general modulation matrix, additional destinations, tempo sync, phase offset, fade-in/delay, and global/free-running LFO modes are not implemented.
 
 The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a waveform scope. Patch save/load includes the three LFO parameters. Browser smoke verifies persistence/restoration; unit tests verify waveform polarity/range, frequency, phase preservation, per-voice retrigger and live filter modulation.
+
+
+## Modulation Matrix v1 — routing engine
+
+A validated modulation-routing layer now sits between per-voice modulation sources and DSP destinations.
+
+Supported sources: `filter-envelope` (EG 02) and `lfo-1`.
+Supported destination: `filter-cutoff`.
+Each route has a stable ID, source, destination, bipolar amount in semitones and enabled flag. The matrix validates source/destination IDs, route IDs, duplicate IDs, amount bounds and boolean enable state; invalid route updates are rejected atomically. `computeDestination()` sums only enabled routes and returns the destination modulation in semitones.
+
+The Virtual Analog engine now computes filter cutoff modulation through this matrix rather than directly adding source values. Two default routes are registered: `filter-eg-to-cutoff` and `lfo-1-to-cutoff`. Route amounts remain stored in the existing EG/LFO parameters; two new boolean parameters independently enable/disable the routes. This preserves saved patch structure and defaults both routes to enabled with zero depth.
+
+The MATRIX UI now exposes the two route enable toggles and depth controls. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
+
+This is a deliberately bounded v1 matrix: it has a generic route model and validation, but only two registered sources and one destination. Pitch, amplitude, pan, oscillator parameters, additional destinations, user-created routes and per-layer routing are not implemented yet.

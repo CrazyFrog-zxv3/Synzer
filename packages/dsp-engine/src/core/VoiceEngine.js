@@ -1,6 +1,7 @@
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
 import { TptStateVariableFilter } from './TptStateVariableFilter.js';
 import { LfoOscillator } from './LfoOscillator.js';
+import { ModulationMatrix } from './ModulationMatrix.js';
 
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
@@ -58,6 +59,7 @@ export class VoiceEngine {
       attack: 0.01, decay: 0.3, sustain: 0, release: 0.25, amount: 0,
     };
     this.defaultLfo = { rate: 1, waveform: 'sine', amount: 0 };
+    this.modulationMatrix = new ModulationMatrix();
     this.voices = new Map();
     this.renderVoices = [];
     this.sequence = 0;
@@ -77,7 +79,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -109,6 +111,22 @@ export class VoiceEngine {
       waveform: this.parameters['engine.virtual-analog.lfo1-waveform'],
       amount: this.parameters['engine.virtual-analog.lfo1-amount'],
     };
+    this.modulationMatrix.setRoutes([
+      {
+        id: 'filter-eg-to-cutoff',
+        source: 'filter-envelope',
+        destination: 'filter-cutoff',
+        amount: this.defaultFilterEnvelope.amount,
+        enabled: this.parameters['engine.virtual-analog.filter-env-route-enabled'],
+      },
+      {
+        id: 'lfo-1-to-cutoff',
+        source: 'lfo-1',
+        destination: 'filter-cutoff',
+        amount: this.defaultLfo.amount,
+        enabled: this.parameters['engine.virtual-analog.lfo1-route-enabled'],
+      },
+    ]);
     const filterParameters = {
       mode: this.parameters['engine.virtual-analog.filter-mode'],
       cutoff: this.parameters['engine.virtual-analog.filter-cutoff'],
@@ -177,7 +195,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo,
+      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo, modulationSources: { 'filter-envelope': 0, 'lfo-1': 0 },
     };
     this.voices.set(id, voice);
     return id;
@@ -362,10 +380,11 @@ export class VoiceEngine {
         this.#advanceEnvelope(voice);
         const filterEnvelopeLevel = this.#advanceFilterEnvelope(voice);
         const lfoValue = voice.lfo.oscillator.nextSample();
-        if (voice.filter.mode !== 'off' &&
-            (voice.filterEnvelope.amount !== 0 || voice.lfo.amount !== 0)) {
-          const semitones = (voice.filterEnvelope.amount * filterEnvelopeLevel) +
-            (voice.lfo.amount * lfoValue);
+        const modulationSources = voice.modulationSources;
+        modulationSources['filter-envelope'] = filterEnvelopeLevel;
+        modulationSources['lfo-1'] = lfoValue;
+        const semitones = this.modulationMatrix.computeDestination('filter-cutoff', modulationSources);
+        if (voice.filter.mode !== 'off' && semitones !== 0) {
           const modulatedCutoff = Math.min(
             this.sampleRate * 0.45,
             Math.max(20, voice.filterBaseCutoff * (2 ** (semitones / 12))),

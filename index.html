@@ -185,6 +185,8 @@
     .info-tile { padding: 14px; border: 1px solid var(--line-soft); border-radius: 10px; background: #1a222e; }
     .info-tile span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
     .info-tile strong { display: block; margin-top: 8px; font-size: 16px; }
+    .route-enable { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; padding:11px 12px; border:1px solid var(--line-soft); border-radius:9px; background:#151b25; color:#bdc7d6; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .route-enable input { width:24px; height:24px; accent-color:var(--accent); }
     .roadmap {
       display: flex; align-items: flex-start; gap: 12px; padding: 16px;
       border: 1px dashed #4a5364; border-radius: 12px; background: #1a202a;
@@ -376,7 +378,38 @@
         </section>
 
         <section class="view" data-view="matrix" role="tabpanel" hidden>
-          <div class="roadmap"><div class="roadmap-mark">⌘</div><div><h3>MODULATION MATRIX</h3><p>As rotas entre fontes e destinos ainda não fazem parte do motor DSP atual. Esta área fica reservada para uma matriz por camada, com quantidades bipolares e edição direta.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
+          <div class="module">
+            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING 01</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <div class="module-grid">
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">SOURCE · EG 02</h3><p class="module-subtitle">Filter envelope → filter cutoff</p></div><span class="module-tag">ROUTE 01</span></div>
+                <div class="spec-list">
+                  <div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div>
+                  <div class="spec-row"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
+                </div>
+                <label class="route-enable" for="filter-env-route-enabled"><span>ROUTE ENABLED</span><input id="filter-env-route-enabled" type="checkbox" checked/></label>
+                <div class="control">
+                  <div class="control-top"><label for="filter-env-amount">MODULATION AMOUNT</label><output id="filter-env-amount-value">0 st</output></div>
+                  <input id="filter-env-amount" type="range" min="-48" max="48" step="1" value="0"/>
+                  <p class="control-hint">−48 st fecha · +48 st abre</p>
+                </div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">SOURCE · LFO 01</h3><p class="module-subtitle">Low-frequency oscillator → filter cutoff</p></div><span class="module-tag">ROUTE 02</span></div>
+                <div class="spec-list">
+                  <div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div>
+                  <div class="spec-row"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
+                </div>
+                <label class="route-enable" for="lfo1-route-enabled"><span>ROUTE ENABLED</span><input id="lfo1-route-enabled" type="checkbox" checked/></label>
+                <div class="control">
+                  <div class="control-top"><label for="lfo1-amount">MODULATION AMOUNT</label><output id="lfo1-amount-value">0 st</output></div>
+                  <input id="lfo1-amount" type="range" min="-48" max="48" step="1" value="0"/>
+                  <p class="control-hint">Profundidade bipolar · soma com EG 02</p>
+                </div>
+              </article>
+            </div>
+            <p class="control-hint" style="margin-top:12px">Matriz v1: duas fontes independentes para cutoff. A arquitetura valida fontes, destinos, IDs e valores. Novos destinos (pitch, amplitude, wavetable position), fontes e rotas editáveis serão adicionados progressivamente.</p>
+          </div>
         </section>
         <section class="view" data-view="modifiers" role="tabpanel" hidden>
           <div class="module">
@@ -402,11 +435,11 @@
                 <input id="lfo1-rate" type="range" min="5" max="2000" step="5" value="100"/>
                 <p class="control-hint">0.05–20 Hz · free rate, no tempo sync</p>
               </div>
-              <div class="control">
-                <div class="control-top"><label for="lfo1-amount">FILTER MODULATION</label><output id="lfo1-amount-value">0 st</output></div>
-                <input id="lfo1-amount" type="range" min="-48" max="48" step="1" value="0"/>
-                <p class="control-hint">Bipolar semitone depth · soma com EG 02</p>
+              <div class="control-info">
+                <div class="info-tile"><span>ROUTE DEPTH</span><strong id="lfo1-amount-readout">0 st</strong></div>
+                <div class="info-tile"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
               </div>
+              <p class="control-hint">A profundidade e a ativação da rota são editadas na MODULATION MATRIX.</p>
             </div>
             <p class="control-hint" style="margin-top:12px">A profundidade zero desativa a modulação audível, mas o oscilador continua avançando. A matriz de destinos múltiplos ainda é planejada.</p>
           </div>
