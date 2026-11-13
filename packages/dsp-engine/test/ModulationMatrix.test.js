@@ -53,3 +53,11 @@ test('modulation matrix returns defensive route snapshots and zero for unknown d
   assert.equal(matrix.getRoutes()[0].amount, 12);
   assert.equal(matrix.computeDestination('unknown', { 'filter-envelope': 1 }), 0);
 });
+
+
+test('compiled filter-cutoff route coefficients match the generic matrix sum', () => {
+  const matrix = new ModulationMatrix(routes);
+  assert.equal(matrix.computeFilterCutoff(0.5, -1), 12);
+  matrix.setRoute('eg-filter', { enabled: false });
+  assert.equal(matrix.computeFilterCutoff(1, 1), -6);
+});

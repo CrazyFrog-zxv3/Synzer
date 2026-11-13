@@ -40,6 +40,13 @@ export class ModulationMatrix {
       ids.add(route.id);
     }
     this.routes = normalized;
+    this.filterEnvelopeCutoffAmount = 0;
+    this.lfoCutoffAmount = 0;
+    for (const route of this.routes) {
+      if (!route.enabled || route.destination !== 'filter-cutoff') continue;
+      if (route.source === 'filter-envelope') this.filterEnvelopeCutoffAmount += route.amount;
+      else if (route.source === 'lfo-1') this.lfoCutoffAmount += route.amount;
+    }
     return this.getRoutes();
   }
 
@@ -52,6 +59,12 @@ export class ModulationMatrix {
     const next = this.routes.map((route, routeIndex) =>
       routeIndex === index ? normalizeRoute({ ...route, ...changes }) : route);
     return this.setRoutes(next);
+  }
+
+  /** Hot-path specialization for the currently supported filter-cutoff sources. */
+  computeFilterCutoff(filterEnvelopeLevel, lfoValue) {
+    return (filterEnvelopeLevel * this.filterEnvelopeCutoffAmount) +
+      (lfoValue * this.lfoCutoffAmount);
   }
 
   computeDestination(destination, sourceValues = {}) {

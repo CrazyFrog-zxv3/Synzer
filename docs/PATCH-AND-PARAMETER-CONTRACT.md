@@ -209,3 +209,8 @@ The Virtual Analog engine now computes filter cutoff modulation through this mat
 The MATRIX UI now exposes the two route enable toggles and depth controls. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
 
 This is a deliberately bounded v1 matrix: it has a generic route model and validation, but only two registered sources and one destination. Pitch, amplitude, pan, oscillator parameters, additional destinations, user-created routes and per-layer routing are not implemented yet.
+
+
+### Modulation matrix hot-path optimization
+
+The generic `computeDestination()` API remains available for validation and future routing. The current two-source filter destination now compiles enabled route amounts when routes change and uses `computeFilterCutoff()` in the sample loop. This removes per-sample route iteration and source-object lookups while retaining the same validated route model and sum semantics. The benchmark is rerun with EG 02 and LFO active to quantify the optimized render path.

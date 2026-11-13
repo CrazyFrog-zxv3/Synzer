@@ -198,7 +198,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo, modulationSources: { 'filter-envelope': 0, 'lfo-1': 0 },
+      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo,
     };
     this.voices.set(id, voice);
     return id;
@@ -383,10 +383,7 @@ export class VoiceEngine {
         this.#advanceEnvelope(voice);
         const filterEnvelopeLevel = this.#advanceFilterEnvelope(voice);
         const lfoValue = voice.lfo.oscillator.nextSample();
-        const modulationSources = voice.modulationSources;
-        modulationSources['filter-envelope'] = filterEnvelopeLevel;
-        modulationSources['lfo-1'] = lfoValue;
-        const semitones = this.modulationMatrix.computeDestination('filter-cutoff', modulationSources);
+        const semitones = this.modulationMatrix.computeFilterCutoff(filterEnvelopeLevel, lfoValue);
         if (voice.filter.mode !== 'off') {
           const modulatedCutoff = semitones === 0
             ? voice.filterBaseCutoff
