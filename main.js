@@ -18,6 +18,46 @@ const engine = new SynzerEngine({
   },
 });
 
+let observedAudioContext = null;
+
+function renderAudioLifecycle() {
+  const context = engine.context;
+  if (!context) return;
+
+  const isRunning = context.state === 'running';
+  state.classList.toggle('on', isRunning && !document.hidden);
+
+  if (document.hidden) {
+    stateLabel.textContent = isRunning ? 'APP BACKGROUND · AUDIO ACTIVE' : `APP BACKGROUND · AUDIO ${context.state.toUpperCase()}`;
+    return;
+  }
+
+  if (context.state === 'running') {
+    stateLabel.textContent = 'ENGINE READY';
+    workletState.textContent = 'AUDIOWORKLET READY';
+  } else if (context.state === 'suspended') {
+    stateLabel.textContent = 'AUDIO SUSPENDED · TOUCH TO RESUME';
+    workletState.textContent = 'AUDIO SUSPENDED';
+    message.textContent = 'O navegador suspendeu o áudio. Toque no teclado para retomar.';
+  } else if (context.state === 'closed') {
+    stateLabel.textContent = 'ENGINE CLOSED · TOUCH TO RESTART';
+    workletState.textContent = 'CLOSED';
+  } else {
+    stateLabel.textContent = `AUDIO ${context.state.toUpperCase()}`;
+    workletState.textContent = context.state.toUpperCase();
+  }
+}
+
+function observeAudioContext(context) {
+  if (!context || context === observedAudioContext) return;
+  observedAudioContext = context;
+  context.addEventListener('statechange', renderAudioLifecycle);
+  renderAudioLifecycle();
+}
+
+document.addEventListener('visibilitychange', renderAudioLifecycle);
+window.addEventListener('pageshow', renderAudioLifecycle);
+
 const midiNotes = Array.from({ length: 13 }, (_, index) => 60 + index);
 const whiteOffsets = [0, 2, 4, 5, 7, 9, 11, 12];
 const whiteLabels = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
@@ -136,9 +176,7 @@ function createKey(note, kind, left, width, label) {
       envelope: readEnvelope(),
     }).then(async (voiceId) => {
       record.voiceId = voiceId;
-      state.classList.add('on');
-      stateLabel.textContent = 'ENGINE READY';
-      workletState.textContent = 'AUDIOWORKLET READY';
+      observeAudioContext(engine.context);
 
       if (record.released) {
         await engine.noteOff(voiceId);
@@ -217,6 +255,27 @@ setWaveform('saw');
 updateEnvelopeGraph();
 syncHeldKeys();
 
-window.addEventListener('pagehide', () => {
-  engine.close().catch(() => {});
+window.addEventListener('pagehide', async () => {
+  for (const record of activePointers.values()) {
+    record.released = true;
+    record.button.classList.remove('down');
+  }
+  activePointers.clear();
+  syncHeldKeys();
+
+  state.classList.remove('on');
+  stateLabel.textContent = 'ENGINE CLOSING';
+  workletState.textContent = 'CLOSING';
+  message.textContent = 'Fechando o motor de áudio ao sair desta página.';
+
+  try {
+    await engine.close();
+    stateLabel.textContent = 'ENGINE CLOSED · TOUCH TO RESTART';
+    workletState.textContent = 'CLOSED';
+    message.textContent = 'Motor fechado. Ao voltar, toque no teclado para reinicializar o áudio.';
+  } catch (error) {
+    stateLabel.textContent = 'ENGINE CLOSE ERROR';
+    workletState.textContent = 'CLOSE ERROR';
+    message.textContent = `Falha ao fechar o motor: ${error.message}`;
+  }
 });
