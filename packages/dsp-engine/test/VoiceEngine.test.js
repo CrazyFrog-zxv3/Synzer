@@ -407,3 +407,54 @@ test('filter-envelope state returned by getVoice is a defensive snapshot', () =>
   assert.equal(engine.getVoice('voice-1').filterEnvelope.level, 0);
   assert.equal(engine.getVoice('voice-1').filterEnvelope.amount, 0);
 });
+
+
+test('LFO modulates filter cutoff and crosses from positive to negative polarity', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 1000,
+    'engine.virtual-analog.filter-env-amount': 0,
+    'engine.virtual-analog.lfo1-rate': 2,
+    'engine.virtual-analog.lfo1-waveform': 'square',
+    'engine.virtual-analog.lfo1-amount': 12,
+  });
+  addVoice(engine, { id: 'lfo-filter' });
+  render(engine, 1);
+  assert.ok(Math.abs(engine.getVoice('lfo-filter').filter.cutoff - 2000) < 1,
+    'positive square phase should raise cutoff by one octave');
+  render(engine, 2000);
+  assert.ok(Math.abs(engine.getVoice('lfo-filter').filter.cutoff - 500) < 1,
+    'negative square phase should lower cutoff by one octave');
+});
+
+test('LFO parameter changes affect active voices without resetting phase', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 1000,
+    'engine.virtual-analog.filter-env-amount': 0,
+    'engine.virtual-analog.lfo1-rate': 1,
+    'engine.virtual-analog.lfo1-waveform': 'sine',
+    'engine.virtual-analog.lfo1-amount': 0,
+  });
+  addVoice(engine, { id: 'lfo-live' });
+  render(engine, 100);
+  const before = engine.getVoice('lfo-live').lfo.phase;
+  engine.setParameters({ 'engine.virtual-analog.lfo1-amount': 12 });
+  const after = engine.getVoice('lfo-live').lfo.phase;
+  assert.equal(after, before);
+  render(engine, 1);
+  assert.ok(engine.getVoice('lfo-live').filter.cutoff > 1000);
+});
+
+test('each voice owns an independent retriggered LFO phase', () => {
+  const engine = createEngine();
+  engine.setParameters({ 'engine.virtual-analog.lfo1-rate': 3 });
+  addVoice(engine, { id: 'lfo-a' });
+  render(engine, 32);
+  addVoice(engine, { id: 'lfo-b', note: 64, frequency: 329.63 });
+  assert.equal(engine.getVoice('lfo-b').lfo.phase, 0);
+  assert.notEqual(engine.getVoice('lfo-a').lfo.phase, engine.getVoice('lfo-b').lfo.phase);
+});

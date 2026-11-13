@@ -23,6 +23,9 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.filter-env-sustain',
     'engine.virtual-analog.filter-env-release',
     'engine.virtual-analog.filter-env-amount',
+    'engine.virtual-analog.lfo1-rate',
+    'engine.virtual-analog.lfo1-waveform',
+    'engine.virtual-analog.lfo1-amount',
   ]);
   assert.ok(VIRTUAL_ANALOG_PARAMETER_DEFINITIONS.every(Object.isFrozen));
 });
@@ -43,6 +46,9 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.filter-env-sustain': 0,
     'engine.virtual-analog.filter-env-release': 0.25,
     'engine.virtual-analog.filter-env-amount': 0,
+    'engine.virtual-analog.lfo1-rate': 1,
+    'engine.virtual-analog.lfo1-waveform': 'sine',
+    'engine.virtual-analog.lfo1-amount': 0,
   });
 });
 
@@ -87,4 +93,19 @@ test('filter envelope validates ADSR ranges and bipolar semitone depth', () => {
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-attack': -0.1 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-sustain': 1.1 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-env-amount': 49 }), /range/i);
+});
+
+
+test('LFO parameter definitions validate rate, waveform and bipolar depth', () => {
+  const values = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.lfo1-rate': 5.25,
+    'engine.virtual-analog.lfo1-waveform': 'triangle',
+    'engine.virtual-analog.lfo1-amount': 24,
+  });
+  assert.equal(values['engine.virtual-analog.lfo1-rate'], 5.25);
+  assert.equal(values['engine.virtual-analog.lfo1-waveform'], 'triangle');
+  assert.equal(values['engine.virtual-analog.lfo1-amount'], 24);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-rate': 0 }), /range/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-waveform': 'noise' }), /choice/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo1-amount': 49 }), /range/i);
 });
