@@ -30,6 +30,10 @@ engine.setParameters({
   'engine.virtual-analog.lfo1-rate': 5,
   'engine.virtual-analog.lfo1-waveform': 'sine',
   'engine.virtual-analog.lfo1-amount': 12,
+  'engine.virtual-analog.eg-osc1-pitch-amount': 7,
+  'engine.virtual-analog.eg-osc1-pitch-enabled': true,
+  'engine.virtual-analog.lfo-osc2-pitch-amount': -5,
+  'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
 });
 
 for (let index = 0; index < voiceCount; index++) {
