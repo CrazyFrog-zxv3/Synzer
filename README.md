@@ -1,11 +1,20 @@
-# SYNZER
+# SYNZER · DSP Core Lab
 
-DSP Core Lab experimental build 0.2.0.
+Experimental browser build 0.2.0.
 
-The browser demo is published at the repository root. The complete Android/local source package is available in `releases/SYNZER-LOCAL-0.2.0-ANDROID.zip`.
+## Browser demo
 
-This build includes a Web Audio AudioWorklet engine with sine, PolyBLEP saw and PolyBLEP square oscillators, ADSR envelope, multitouch keyboard, and automated Node.js tests.
+The static demo entry point is `index.html`. It loads the touch keyboard from `main.js`, the Web Audio API controller from `packages/dsp-engine/src/core/SynzerEngine.js`, and the AudioWorklet processor from `packages/dsp-engine/src/worklets/synzer-processor.js`.
 
-**Validation boundary:** automated tests and a local Node microbenchmark do not establish real-device audio output, Android latency, or POCO compatibility. Those require physical-device testing.
+## Included features
 
-See `docs/` in the source archive for architecture, Android/Termux instructions, status, and validation details.
+- Sine, PolyBLEP saw and PolyBLEP square oscillators.
+- ADSR envelope and up to 12 voices.
+- Multitouch keyboard using Pointer Events.
+- AudioWorklet-based rendering.
+
+## Validation boundary
+
+This repository upload has not yet been verified in a real browser session or on a physical Android device. Automated Node tests and the local benchmark from the working package are not represented as GitHub Pages or device validation. Audio output, latency, stability and POCO compatibility remain unverified.
+
+The Android/Termux launcher and full test/documentation package are not part of this initial Pages deployment.
