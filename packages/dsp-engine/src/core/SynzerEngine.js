@@ -98,8 +98,8 @@ export class SynzerEngine {
         node.connect(context.destination);
         assertCurrent();
         this.processorFailure = null;
-        this.node = node;
         node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.parameters });
+        this.node = node;
       } catch (error) {
         node.disconnect();
         node.port.close();
