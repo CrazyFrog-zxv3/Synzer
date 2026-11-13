@@ -95,6 +95,11 @@ function readSynthParameters() {
     'engine.virtual-analog.filter-mode': document.querySelector('#filter-mode').value,
     'engine.virtual-analog.filter-cutoff': Math.round(20 * (1000 ** (Number(document.querySelector('#filter-cutoff').value) / 1000))),
     'engine.virtual-analog.filter-resonance': Number(document.querySelector('#filter-resonance').value) / 100,
+    'engine.virtual-analog.filter-env-attack': Number(document.querySelector('#filter-env-attack').value) / 1000,
+    'engine.virtual-analog.filter-env-decay': Number(document.querySelector('#filter-env-decay').value) / 1000,
+    'engine.virtual-analog.filter-env-sustain': Number(document.querySelector('#filter-env-sustain').value) / 100,
+    'engine.virtual-analog.filter-env-release': Number(document.querySelector('#filter-env-release').value) / 1000,
+    'engine.virtual-analog.filter-env-amount': Number(document.querySelector('#filter-env-amount').value),
   };
 }
 
@@ -149,6 +154,26 @@ function updateEnvelopeGraph() {
   document.querySelector('#env-d').setAttribute('cx', String(decayX));
   document.querySelector('#env-d').setAttribute('cy', String(sustainY));
   document.querySelector('#env-r').setAttribute('cx', String(releaseEndX));
+}
+
+function updateFilterEnvelopeGraph() {
+  const attack = Number(document.querySelector('#filter-env-attack').value);
+  const decay = Number(document.querySelector('#filter-env-decay').value);
+  const sustain = Number(document.querySelector('#filter-env-sustain').value) / 100;
+  const release = Number(document.querySelector('#filter-env-release').value);
+  const amount = Number(document.querySelector('#filter-env-amount').value);
+  const attackX = 28 + (attack / 3000) * 110;
+  const decayX = attackX + 42 + (decay / 3000) * 120;
+  const sustainY = 180 - (sustain * 145);
+  const releaseStartX = Math.min(490, Math.max(410, decayX + 100));
+  const releaseEndX = 585 - (release / 3000) * 36;
+  const path = `M0 180 L${attackX} 18 L${decayX} ${sustainY} L${releaseStartX} ${sustainY} L${releaseEndX} 180`;
+  document.querySelector('#filter-env-path').setAttribute('d', path);
+  document.querySelector('#filter-env-fill').setAttribute('d', `${path} Z`);
+  const depth = document.querySelector('#filter-env-depth-readout');
+  depth.textContent = `${amount > 0 ? '+' : ''}${amount} semitons`;
+  document.querySelector('#filter-env-polarity').textContent =
+    amount > 0 ? 'POSITIVE · OPEN' : amount < 0 ? 'NEGATIVE · CLOSE' : 'NEUTRAL';
 }
 
 function syncHeldKeys() {
@@ -294,6 +319,27 @@ filterResonance.addEventListener('input', () => {
   applySynthParameters();
 });
 
+for (const [id, unit] of [
+  ['filter-env-attack', 'ms'],
+  ['filter-env-decay', 'ms'],
+  ['filter-env-sustain', '%'],
+  ['filter-env-release', 'ms'],
+  ['filter-env-amount', 'st'],
+]) {
+  const input = document.querySelector(`#${id}`);
+  const output = document.querySelector(`#${id}-value`);
+  input.addEventListener('input', () => {
+    const value = Number(input.value);
+    output.value = id === 'filter-env-amount'
+      ? `${value > 0 ? '+' : ''}${value} ${unit}`
+      : `${value}${unit}`;
+    output.textContent = output.value;
+    updateFilterEnvelopeGraph();
+    applySynthParameters();
+  });
+}
+updateFilterEnvelopeGraph();
+
 const patchNameInput = document.querySelector('#patch-name');
 const patchTitle = document.querySelector('#current-patch-title');
 const patchSelect = document.querySelector('#patch-select');
@@ -345,6 +391,23 @@ loadPatchButton.addEventListener('click', () => {
     filterResonance.value = String(Math.round(parameters['engine.virtual-analog.filter-resonance'] * 100));
     filterResonanceOutput.value = `${parameters['engine.virtual-analog.filter-resonance'].toFixed(2)} Q`;
     filterResonanceOutput.textContent = filterResonanceOutput.value;
+    for (const [id, unit] of [
+      ['filter-env-attack', 'ms'],
+      ['filter-env-decay', 'ms'],
+      ['filter-env-sustain', '%'],
+      ['filter-env-release', 'ms'],
+      ['filter-env-amount', 'st'],
+    ]) {
+      const value = parameters[`engine.virtual-analog.${id.replace('filter-env-', 'filter-env-')}`];
+      const input = document.querySelector(`#${id}`);
+      const output = document.querySelector(`#${id}-value`);
+      input.value = String(id === 'filter-env-amount' ? value : Math.round(value * (unit === '%' ? 100 : 1000)));
+      output.value = id === 'filter-env-amount'
+        ? `${value > 0 ? '+' : ''}${value} ${unit}`
+        : `${input.value}${unit}`;
+      output.textContent = output.value;
+    }
+    updateFilterEnvelopeGraph();
     for (const [id, unit] of [['attack', 'ms'], ['decay', 'ms'], ['sustain', '%'], ['release', 'ms']]) {
       const input = document.querySelector(`#${id}`);
       const output = document.querySelector(`#${id}-value`);

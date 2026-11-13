@@ -57,6 +57,11 @@ try {
   await page.locator('#filter-mode').selectOption('lowpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '350'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-attack').evaluate((input) => { input.value = '125'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-decay').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-release').evaluate((input) => { input.value = '700'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-amount').evaluate((input) => { input.value = '-24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#attack').evaluate((input) => {
     input.value = '75';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -81,6 +86,11 @@ try {
   await page.locator('#filter-mode').selectOption('highpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '800'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-attack').evaluate((input) => { input.value = '900'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-decay').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '90'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-release').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#filter-env-amount').evaluate((input) => { input.value = '36'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#load-patch').click();
   assert.equal(await page.locator('#master-level').inputValue(), '42');
   assert.equal(await page.locator('#attack').inputValue(), '75');
@@ -88,6 +98,11 @@ try {
   assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
   assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
+  assert.equal(await page.locator('#filter-env-attack').inputValue(), '125');
+  assert.equal(await page.locator('#filter-env-decay').inputValue(), '450');
+  assert.equal(await page.locator('#filter-env-sustain').inputValue(), '35');
+  assert.equal(await page.locator('#filter-env-release').inputValue(), '700');
+  assert.equal(await page.locator('#filter-env-amount').inputValue(), '-24');
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -149,7 +164,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro e Filter EG foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,
