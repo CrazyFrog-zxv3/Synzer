@@ -110,6 +110,14 @@ function readSynthParameters() {
     'engine.virtual-analog.lfo1-waveform': document.querySelector('#lfo1-waveform').value,
     'engine.virtual-analog.lfo1-amount': Number(document.querySelector('#lfo1-amount').value),
     'engine.virtual-analog.filter-env-route-enabled': document.querySelector('#filter-env-route-enabled').checked,
+    'engine.virtual-analog.eg-osc1-pitch-amount': Number(document.querySelector('#eg-osc1-amount').value),
+    'engine.virtual-analog.eg-osc1-pitch-enabled': document.querySelector('#eg-osc1-enabled').checked,
+    'engine.virtual-analog.eg-osc2-pitch-amount': Number(document.querySelector('#eg-osc2-amount').value),
+    'engine.virtual-analog.eg-osc2-pitch-enabled': document.querySelector('#eg-osc2-enabled').checked,
+    'engine.virtual-analog.lfo-osc1-pitch-amount': Number(document.querySelector('#lfo-osc1-amount').value),
+    'engine.virtual-analog.lfo-osc1-pitch-enabled': document.querySelector('#lfo-osc1-enabled').checked,
+    'engine.virtual-analog.lfo-osc2-pitch-amount': Number(document.querySelector('#lfo-osc2-amount').value),
+    'engine.virtual-analog.lfo-osc2-pitch-enabled': document.querySelector('#lfo-osc2-enabled').checked,
     'engine.virtual-analog.lfo1-route-enabled': document.querySelector('#lfo1-route-enabled').checked,
   };
 }
@@ -422,6 +430,19 @@ lfoRouteEnabled.addEventListener('change', () => {
   updateLfoWaveformGraph();
   applySynthParameters();
 });
+
+for (const route of ['eg-osc1', 'lfo-osc1', 'eg-osc2', 'lfo-osc2']) {
+  const enabled = document.querySelector(`#${route}-enabled`);
+  const amount = document.querySelector(`#${route}-amount`);
+  const output = document.querySelector(`#${route}-amount-value`);
+  enabled.addEventListener('change', applySynthParameters);
+  amount.addEventListener('input', () => {
+    const value = Number(amount.value);
+    output.value = `${value > 0 ? '+' : ''}${value} st`;
+    output.textContent = output.value;
+    applySynthParameters();
+  });
+}
 lfoWaveform.addEventListener('change', () => {
   updateLfoWaveformGraph();
   applySynthParameters();
@@ -498,6 +519,22 @@ loadPatchButton.addEventListener('click', () => {
     osc2FineOutput.textContent = osc2FineOutput.value;
     updateOscillator2Readouts();
     filterEnvRouteEnabled.checked = parameters['engine.virtual-analog.filter-env-route-enabled'];
+    document.querySelector('#eg-osc1-enabled').checked = parameters['engine.virtual-analog.eg-osc1-pitch-enabled'];
+    document.querySelector('#eg-osc1-amount').value = String(parameters['engine.virtual-analog.eg-osc1-pitch-amount']);
+    document.querySelector('#eg-osc1-amount-value').value = `${parameters['engine.virtual-analog.eg-osc1-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.eg-osc1-pitch-amount']} st`;
+    document.querySelector('#eg-osc1-amount-value').textContent = document.querySelector('#eg-osc1-amount-value').value;
+    document.querySelector('#eg-osc2-enabled').checked = parameters['engine.virtual-analog.eg-osc2-pitch-enabled'];
+    document.querySelector('#eg-osc2-amount').value = String(parameters['engine.virtual-analog.eg-osc2-pitch-amount']);
+    document.querySelector('#eg-osc2-amount-value').value = `${parameters['engine.virtual-analog.eg-osc2-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.eg-osc2-pitch-amount']} st`;
+    document.querySelector('#eg-osc2-amount-value').textContent = document.querySelector('#eg-osc2-amount-value').value;
+    document.querySelector('#lfo-osc1-enabled').checked = parameters['engine.virtual-analog.lfo-osc1-pitch-enabled'];
+    document.querySelector('#lfo-osc1-amount').value = String(parameters['engine.virtual-analog.lfo-osc1-pitch-amount']);
+    document.querySelector('#lfo-osc1-amount-value').value = `${parameters['engine.virtual-analog.lfo-osc1-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.lfo-osc1-pitch-amount']} st`;
+    document.querySelector('#lfo-osc1-amount-value').textContent = document.querySelector('#lfo-osc1-amount-value').value;
+    document.querySelector('#lfo-osc2-enabled').checked = parameters['engine.virtual-analog.lfo-osc2-pitch-enabled'];
+    document.querySelector('#lfo-osc2-amount').value = String(parameters['engine.virtual-analog.lfo-osc2-pitch-amount']);
+    document.querySelector('#lfo-osc2-amount-value').value = `${parameters['engine.virtual-analog.lfo-osc2-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.lfo-osc2-pitch-amount']} st`;
+    document.querySelector('#lfo-osc2-amount-value').textContent = document.querySelector('#lfo-osc2-amount-value').value;
     lfoRouteEnabled.checked = parameters['engine.virtual-analog.lfo1-route-enabled'];
     filterMode.value = parameters['engine.virtual-analog.filter-mode'];
     filterCutoff.value = String(Math.round(Math.log(parameters['engine.virtual-analog.filter-cutoff'] / 20) / Math.log(1000) * 1000));
