@@ -62,5 +62,5 @@ test('patch store rejects malformed storage and unsupported engines on apply', (
     ...patch,
     engineSlots: [{ slotId: 'layer-a', engineId: 'wavetable', enabled: true, parameters: {} }],
   };
-  assert.throws(() => applyVirtualAnalogPatch(unsupported), /only Virtual Analog/i);
+  assert.throws(() => applyVirtualAnalogPatch(unsupported), /one enabled Virtual Analog/i);
 });
