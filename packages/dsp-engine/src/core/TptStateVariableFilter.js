@@ -45,13 +45,25 @@ export class TptStateVariableFilter {
     this.mode = mode;
     this.cutoff = cutoff;
     this.resonance = resonance;
-    const frequency = Math.min(cutoff, this.sampleRate * 0.45);
+    this.#updateCoefficients();
+    return this.getParameters();
+  }
+
+  setCutoff(cutoff) {
+    assertRange('cutoff', cutoff, 20, 20000);
+    if (cutoff === this.cutoff) return this.cutoff;
+    this.cutoff = cutoff;
+    this.#updateCoefficients();
+    return this.cutoff;
+  }
+
+  #updateCoefficients() {
+    const frequency = Math.min(this.cutoff, this.sampleRate * 0.45);
     const g = Math.tan(Math.PI * frequency / this.sampleRate);
-    this.k = 1 / resonance;
+    this.k = 1 / this.resonance;
     this.a1 = 1 / (1 + g * (g + this.k));
     this.a2 = g * this.a1;
     this.a3 = g * this.a2;
-    return this.getParameters();
   }
 
   getParameters() {

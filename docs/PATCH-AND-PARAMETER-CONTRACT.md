@@ -158,3 +158,23 @@ The GLOBAL panel now exposes mode, logarithmic cutoff and resonance controls. Th
 ### Current limits
 
 This is a second-order multimode SVF, not a full filter suite. No ladder, diode, comb, formant, drive/saturation, self-oscillation, oversampling or filter-envelope modulation is implemented. There is no filter visualization or modulation routing yet. The resonance/Q mapping is a direct DSP parameter, not a calibrated emulation of a specific analog circuit. Device-level CPU, latency and sound quality on Android/POCO remain unverified until tested on physical hardware.
+
+
+## Dedicated filter envelope (EG 02)
+
+The Virtual Analog engine now has an independent ADSR envelope for filter cutoff modulation. It is triggered on NOTE_ON and enters its own release stage on NOTE_OFF; it does not reuse or alter the amplitude envelope.
+
+Parameters:
+- `engine.virtual-analog.filter-env-attack`: 0–30 s, default 0.01 s.
+- `engine.virtual-analog.filter-env-decay`: 0–30 s, default 0.3 s.
+- `engine.virtual-analog.filter-env-sustain`: 0–1, default 0.
+- `engine.virtual-analog.filter-env-release`: 0–60 s, default 0.25 s.
+- `engine.virtual-analog.filter-env-amount`: −48 to +48 semitones, default 0.
+
+The modulation is bipolar and exponential in frequency: `modulatedCutoff = baseCutoff * 2 ** (amountSemitones * envelopeLevel / 12)`. Negative amounts close the cutoff; positive amounts open it. The result is constrained to 20 Hz and 45% of the active sample rate. The base cutoff remains a separate parameter. The TPT filter gained a cutoff-only coefficient update method that preserves integrator state. Modulation is applied sample-by-sample to active voices when the filter is enabled and amount is nonzero.
+
+The new envelope parameters are part of the existing Virtual Analog parameter registry and patch schema. Existing patches receive neutral modulation defaults (amount 0), so their sound is unchanged.
+
+The render benchmark now includes a deliberately long, continuously moving filter-envelope ramp across 12 voices, exercising coefficient updates rather than measuring only a static filter.
+
+Limit: cutoff modulation currently recalculates TPT coefficients per sample and per active voice while the envelope is moving. The CI benchmark measures this on its Linux x64 runner; ARM64/Android profiling remains required before deciding whether a coefficient lookup table or block-rate ramp is necessary.

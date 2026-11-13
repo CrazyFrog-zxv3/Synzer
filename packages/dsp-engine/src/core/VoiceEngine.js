@@ -53,6 +53,9 @@ export class VoiceEngine {
     this.masterLevel = 1;
     this.defaultWaveform = 'saw';
     this.defaultEnvelope = { ...DEFAULT_ENVELOPE };
+    this.defaultFilterEnvelope = {
+      attack: 0.01, decay: 0.3, sustain: 0, release: 0.25, amount: 0,
+    };
     this.voices = new Map();
     this.renderVoices = [];
     this.sequence = 0;
@@ -72,7 +75,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -92,12 +95,28 @@ export class VoiceEngine {
       sustain: this.parameters['engine.virtual-analog.amp-sustain'],
       release: this.parameters['engine.virtual-analog.amp-release'],
     };
+    this.defaultFilterEnvelope = {
+      attack: this.parameters['engine.virtual-analog.filter-env-attack'],
+      decay: this.parameters['engine.virtual-analog.filter-env-decay'],
+      sustain: this.parameters['engine.virtual-analog.filter-env-sustain'],
+      release: this.parameters['engine.virtual-analog.filter-env-release'],
+      amount: this.parameters['engine.virtual-analog.filter-env-amount'],
+    };
     const filterParameters = {
       mode: this.parameters['engine.virtual-analog.filter-mode'],
       cutoff: this.parameters['engine.virtual-analog.filter-cutoff'],
       resonance: this.parameters['engine.virtual-analog.filter-resonance'],
     };
-    for (const voice of this.voices.values()) voice.filter.setParameters(filterParameters);
+    for (const voice of this.voices.values()) {
+      voice.filterBaseCutoff = filterParameters.cutoff;
+      voice.filter.setParameters(filterParameters);
+      Object.assign(voice.filterEnvelope, this.defaultFilterEnvelope);
+      if (voice.filterEnvelope.stage === 'release') {
+        voice.filterEnvelope.stageSamples = 0;
+        voice.filterEnvelope.releaseStep = voice.filterEnvelope.level /
+          Math.max(1, Math.round(voice.filterEnvelope.release * this.sampleRate));
+      }
+    }
     return this.getParameters();
   }
 
@@ -114,6 +133,13 @@ export class VoiceEngine {
       throw new TypeError(`waveform must be one of: ${[...SUPPORTED_WAVEFORMS].join(', ')}.`);
     }
     const normalizedEnvelope = normalizeEnvelope(envelope);
+    const filterEnvelope = {
+      ...this.defaultFilterEnvelope,
+      stage: 'attack',
+      level: 0,
+      stageSamples: 0,
+      releaseStep: 0,
+    };
     const filter = new TptStateVariableFilter({
       sampleRate: this.sampleRate,
       mode: this.parameters['engine.virtual-analog.filter-mode'],
@@ -131,7 +157,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter,
+      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope,
     };
     this.voices.set(id, voice);
     return id;
@@ -143,6 +169,18 @@ export class VoiceEngine {
     if (voice.envelope.release === 0 || voice.envelopeLevel <= 0) {
       this.voices.delete(id);
       return true;
+    }
+    const filterEnvelope = voice.filterEnvelope;
+    if (filterEnvelope.stage !== 'idle' && filterEnvelope.stage !== 'release') {
+      if (filterEnvelope.release === 0 || filterEnvelope.level <= 0) {
+        filterEnvelope.level = 0;
+        filterEnvelope.stage = 'idle';
+      } else {
+        filterEnvelope.stage = 'release';
+        filterEnvelope.stageSamples = 0;
+        filterEnvelope.releaseStep = filterEnvelope.level /
+          Math.max(1, Math.round(filterEnvelope.release * this.sampleRate));
+      }
     }
     voice.stage = 'release';
     voice.stageSamples = 0;
@@ -225,6 +263,64 @@ export class VoiceEngine {
     }
   }
 
+  #advanceFilterEnvelope(voice) {
+    const env = voice.filterEnvelope;
+    switch (env.stage) {
+      case 'attack': {
+        const total = Math.round(env.attack * this.sampleRate);
+        if (total === 0) {
+          env.level = 1;
+          env.stage = env.decay === 0 ? 'sustain' : 'decay';
+          env.stageSamples = 0;
+        } else {
+          env.level = Math.min(1, env.level + 1 / total);
+          env.stageSamples++;
+          if (env.stageSamples >= total) {
+            env.level = 1;
+            env.stage = env.decay === 0 ? 'sustain' : 'decay';
+            env.stageSamples = 0;
+          }
+        }
+        break;
+      }
+      case 'decay': {
+        const total = Math.round(env.decay * this.sampleRate);
+        if (total === 0) {
+          env.level = env.sustain;
+          env.stage = 'sustain';
+          env.stageSamples = 0;
+        } else {
+          env.level = Math.max(env.sustain, env.level - (1 - env.sustain) / total);
+          env.stageSamples++;
+          if (env.stageSamples >= total) {
+            env.level = env.sustain;
+            env.stage = 'sustain';
+            env.stageSamples = 0;
+          }
+        }
+        break;
+      }
+      case 'release': {
+        env.level = Math.max(0, env.level - env.releaseStep);
+        env.stageSamples++;
+        if (env.level <= 0 || env.stageSamples >= Math.max(1, Math.round(env.release * this.sampleRate))) {
+          env.level = 0;
+          env.stage = 'idle';
+          env.stageSamples = 0;
+        }
+        break;
+      }
+      case 'sustain':
+        env.level = env.sustain;
+        break;
+      case 'idle':
+      default:
+        env.level = 0;
+        break;
+    }
+    return env.level;
+  }
+
   render(left, right = left) {
     if (!(left instanceof Float32Array)) throw new TypeError('Left output must be a Float32Array.');
     if (right !== left && !(right instanceof Float32Array)) throw new TypeError('Right output must be a Float32Array.');
@@ -244,6 +340,15 @@ export class VoiceEngine {
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
         const voice = renderVoices[voiceIndex];
         this.#advanceEnvelope(voice);
+        const filterEnvelopeLevel = this.#advanceFilterEnvelope(voice);
+        if (voice.filter.mode !== 'off' && voice.filterEnvelope.amount !== 0) {
+          const semitones = voice.filterEnvelope.amount * filterEnvelopeLevel;
+          const modulatedCutoff = Math.min(
+            this.sampleRate * 0.45,
+            Math.max(20, voice.filterBaseCutoff * (2 ** (semitones / 12))),
+          );
+          voice.filter.setCutoff(modulatedCutoff);
+        }
         // A voice can expire in the middle of this block while its reference remains
         // in the snapshot. Its zero level keeps the remaining samples silent.
         if (voice.envelopeLevel <= 0) continue;
