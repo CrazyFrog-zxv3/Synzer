@@ -26,6 +26,8 @@ jobs:
           node-version: 22
       - name: Run DSP regression tests
         run: npm test
+      - name: DSP render benchmark (informational)
+        run: npm run bench:dsp
       - name: Check browser entry points
         run: |
           node --check main.js
