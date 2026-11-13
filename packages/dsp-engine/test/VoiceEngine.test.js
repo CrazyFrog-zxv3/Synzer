@@ -167,3 +167,72 @@ test('render remains finite at high supported frequencies and polyphony', () => 
   assert.ok([...left, ...right].every(Number.isFinite));
   assert.ok(Math.max(...left.map(Math.abs)) <= 12 * 0.8 * 0.075 + 1e-6);
 });
+
+
+function spectralAmplitudeAtBin(samples, bin) {
+  let real = 0;
+  let imaginary = 0;
+  const angularStep = (2 * Math.PI * bin) / samples.length;
+  for (let index = 0; index < samples.length; index++) {
+    const angle = angularStep * index;
+    real += samples[index] * Math.cos(angle);
+    imaginary -= samples[index] * Math.sin(angle);
+  }
+  return (2 * Math.hypot(real, imaginary)) / samples.length;
+}
+
+function renderSteadyVoice({ waveform, frequency, sampleRate, length, voiceGain = 1 }) {
+  const engine = new VoiceEngine({ sampleRate, maxVoices: 1, voiceGain });
+  engine.noteOn({
+    id: 'spectral-voice',
+    note: 69,
+    frequency,
+    velocity: 1,
+    waveform,
+    envelope: { attack: 0, decay: 0, sustain: 1, release: 0 },
+  });
+  const output = new Float32Array(length);
+  engine.render(output);
+  return output;
+}
+
+test('sine oscillator has the expected coherent fundamental and low harmonic residue', () => {
+  const sampleRate = 48000;
+  const frequency = 997;
+  const length = sampleRate;
+  const samples = renderSteadyVoice({ waveform: 'sine', frequency, sampleRate, length });
+  const fundamentalBin = frequency;
+  const fundamental = spectralAmplitudeAtBin(samples, fundamentalBin);
+  const secondHarmonic = spectralAmplitudeAtBin(samples, fundamentalBin * 2);
+  const thirdHarmonic = spectralAmplitudeAtBin(samples, fundamentalBin * 3);
+
+  assert.ok(Math.abs(fundamental - 1) < 1e-5, 'sine fundamental amplitude should be approximately unity');
+  assert.ok(secondHarmonic < 1e-5, 'sine second harmonic should be negligible');
+  assert.ok(thirdHarmonic < 1e-5, 'sine third harmonic should be negligible');
+});
+
+test('PolyBLEP saw reduces a folded upper-harmonic component versus a naive saw', () => {
+  const sampleRate = 48000;
+  const frequency = 6000;
+  const length = 4800;
+  const corrected = renderSteadyVoice({ waveform: 'saw', frequency, sampleRate, length });
+
+  const naive = new Float32Array(length);
+  let phase = 0;
+  const increment = frequency / sampleRate;
+  for (let index = 0; index < length; index++) {
+    naive[index] = (2 * phase) - 1;
+    phase += increment;
+    if (phase >= 1) phase -= 1;
+  }
+
+  const probeBin = 1800;
+  const correctedProbe = spectralAmplitudeAtBin(corrected, probeBin);
+  const naiveProbe = spectralAmplitudeAtBin(naive, probeBin);
+
+  assert.ok(naiveProbe > 0.2, 'naive saw reference should expose the expected folded component');
+  assert.ok(
+    correctedProbe < naiveProbe * 0.5,
+    `PolyBLEP probe (${correctedProbe}) should be less than half the naive reference (${naiveProbe})`,
+  );
+});
