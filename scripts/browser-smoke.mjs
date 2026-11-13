@@ -108,10 +108,16 @@ try {
   await page.waitForTimeout(50);
   assert.match(await page.locator('#state').textContent(), /ENGINE CLOSED/,
     'pageshow não deve recriar ou retomar o áudio automaticamente');
+  await firstKey.scrollIntoViewIfNeeded();
   const resumedKeyBox = await firstKey.boundingBox();
   await page.mouse.move(resumedKeyBox.x + resumedKeyBox.width / 2, resumedKeyBox.y + resumedKeyBox.height / 2);
   await page.mouse.down();
-  await page.locator('#message').filter({ hasText: /Nota MIDI 60 ativa/ }).waitFor({ timeout: 15000 });
+  await page.waitForFunction(() => {
+    const text = document.querySelector('#message')?.textContent ?? '';
+    return /Nota MIDI 60 ativa/.test(text) || /Falha ao iniciar áudio|Erro no processador/.test(text);
+  }, { timeout: 15000 });
+  const resumedMessage = await page.locator('#message').textContent();
+  assert.match(resumedMessage, /Nota MIDI 60 ativa/, `Audio restart failed: ${resumedMessage}; state=${await page.locator('#state').textContent()}`);
   assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
   await page.mouse.up();
 
