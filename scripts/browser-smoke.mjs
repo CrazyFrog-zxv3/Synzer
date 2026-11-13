@@ -70,6 +70,7 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('[data-wave="sine"]').click();
+  await page.locator('[data-tab="global"]').click();
   await page.locator('#filter-mode').selectOption('highpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '800'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
