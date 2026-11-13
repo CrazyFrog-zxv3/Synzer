@@ -16,6 +16,10 @@ const engine = new VoiceEngine({
 });
 
 engine.setParameters({
+  'engine.virtual-analog.osc2-enabled': true,
+  'engine.virtual-analog.osc2-wave': 'square',
+  'engine.virtual-analog.osc2-level': 0.5,
+  'engine.virtual-analog.osc2-octave': -1,
   'engine.virtual-analog.filter-mode': 'lowpass',
   'engine.virtual-analog.filter-cutoff': 2400,
   'engine.virtual-analog.filter-resonance': 4,
@@ -68,6 +72,7 @@ console.log(JSON.stringify({
   blockSize,
   voices: voiceCount,
   waveforms: 'oscillator 1 saw/square/sine mixed + oscillator 2 square at -1 octave',
+  oscillator2: 'enabled square, -1 octave, level 0.5',
   filter: 'TPT lowpass, 2.4 kHz, Q 4, per voice',
   filterEnvelope: 'active bipolar +24 semitones, 30 s attack, per voice',
   lfo: '5 Hz sine, +12 semitones to filter cutoff, per voice',
