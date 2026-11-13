@@ -67,7 +67,7 @@ console.log(JSON.stringify({
   sampleRate,
   blockSize,
   voices: voiceCount,
-  waveforms: 'saw/square/sine mixed',
+  waveforms: 'oscillator 1 saw/square/sine mixed + oscillator 2 square at -1 octave',
   filter: 'TPT lowpass, 2.4 kHz, Q 4, per voice',
   filterEnvelope: 'active bipolar +24 semitones, 30 s attack, per voice',
   lfo: '5 Hz sine, +12 semitones to filter cutoff, per voice',

@@ -88,6 +88,12 @@ function readSynthParameters() {
   return {
     'global.master-level': Number(document.querySelector('#master-level').value) / 100,
     'engine.virtual-analog.osc-wave': readWaveform(),
+    'engine.virtual-analog.osc2-enabled': document.querySelector('#osc2-enabled').checked,
+    'engine.virtual-analog.osc2-wave': document.querySelector('#osc2-wave').value,
+    'engine.virtual-analog.osc2-level': Number(document.querySelector('#osc2-level').value) / 100,
+    'engine.virtual-analog.osc2-octave': Number(document.querySelector('#osc2-octave').value),
+    'engine.virtual-analog.osc2-semitone': Number(document.querySelector('#osc2-semitone').value),
+    'engine.virtual-analog.osc2-fine': Number(document.querySelector('#osc2-fine').value),
     'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
     'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
     'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
@@ -361,6 +367,46 @@ function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-wavefor
   document.querySelector('#lfo1-amount-readout').textContent = `${amount > 0 ? '+' : ''}${amount} st${enabled ? '' : ' · OFF'}`;
 }
 
+const osc2Enabled = document.querySelector('#osc2-enabled');
+const osc2Wave = document.querySelector('#osc2-wave');
+const osc2Level = document.querySelector('#osc2-level');
+const osc2LevelOutput = document.querySelector('#osc2-level-value');
+const osc2Octave = document.querySelector('#osc2-octave');
+const osc2Semitone = document.querySelector('#osc2-semitone');
+const osc2SemitoneOutput = document.querySelector('#osc2-semitone-value');
+const osc2Fine = document.querySelector('#osc2-fine');
+const osc2FineOutput = document.querySelector('#osc2-fine-value');
+function updateOscillator2Readouts() {
+  const octave = Number(osc2Octave.value);
+  const semitone = Number(osc2Semitone.value);
+  const fine = Number(osc2Fine.value);
+  document.querySelector('#osc2-pitch-readout').textContent =
+    `${octave > 0 ? '+' : ''}${octave} oct · ${semitone > 0 ? '+' : ''}${semitone} st · ${fine > 0 ? '+' : ''}${fine} ct`;
+  document.querySelector('#osc2-level-readout').textContent = `${osc2Level.value}%`;
+}
+osc2Enabled.addEventListener('change', applySynthParameters);
+osc2Wave.addEventListener('change', applySynthParameters);
+osc2Level.addEventListener('input', () => {
+  osc2LevelOutput.value = `${osc2Level.value}%`;
+  osc2LevelOutput.textContent = osc2LevelOutput.value;
+  updateOscillator2Readouts();
+  applySynthParameters();
+});
+osc2Octave.addEventListener('change', () => { updateOscillator2Readouts(); applySynthParameters(); });
+osc2Semitone.addEventListener('input', () => {
+  osc2SemitoneOutput.value = `${osc2Semitone.value} st`;
+  osc2SemitoneOutput.textContent = osc2SemitoneOutput.value;
+  updateOscillator2Readouts();
+  applySynthParameters();
+});
+osc2Fine.addEventListener('input', () => {
+  osc2FineOutput.value = `${osc2Fine.value} cents`;
+  osc2FineOutput.textContent = osc2FineOutput.value;
+  updateOscillator2Readouts();
+  applySynthParameters();
+});
+updateOscillator2Readouts();
+
 const lfoWaveform = document.querySelector('#lfo1-waveform');
 const lfoRate = document.querySelector('#lfo1-rate');
 const lfoRateOutput = document.querySelector('#lfo1-rate-value');
@@ -438,6 +484,19 @@ loadPatchButton.addEventListener('click', () => {
     document.querySelector('#decay').value = String(Math.round(parameters['engine.virtual-analog.amp-decay'] * 1000));
     document.querySelector('#sustain').value = String(Math.round(parameters['engine.virtual-analog.amp-sustain'] * 100));
     document.querySelector('#release').value = String(Math.round(parameters['engine.virtual-analog.amp-release'] * 1000));
+    osc2Enabled.checked = parameters['engine.virtual-analog.osc2-enabled'];
+    osc2Wave.value = parameters['engine.virtual-analog.osc2-wave'];
+    osc2Level.value = String(Math.round(parameters['engine.virtual-analog.osc2-level'] * 100));
+    osc2LevelOutput.value = `${osc2Level.value}%`;
+    osc2LevelOutput.textContent = osc2LevelOutput.value;
+    osc2Octave.value = String(parameters['engine.virtual-analog.osc2-octave']);
+    osc2Semitone.value = String(parameters['engine.virtual-analog.osc2-semitone']);
+    osc2SemitoneOutput.value = `${osc2Semitone.value} st`;
+    osc2SemitoneOutput.textContent = osc2SemitoneOutput.value;
+    osc2Fine.value = String(parameters['engine.virtual-analog.osc2-fine']);
+    osc2FineOutput.value = `${osc2Fine.value} cents`;
+    osc2FineOutput.textContent = osc2FineOutput.value;
+    updateOscillator2Readouts();
     filterEnvRouteEnabled.checked = parameters['engine.virtual-analog.filter-env-route-enabled'];
     lfoRouteEnabled.checked = parameters['engine.virtual-analog.lfo1-route-enabled'];
     filterMode.value = parameters['engine.virtual-analog.filter-mode'];

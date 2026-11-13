@@ -16,6 +16,12 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
     defaultValue: 'saw',
     choices: ['saw', 'square', 'sine'],
   }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-enabled', type: 'boolean', defaultValue: false }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-wave', type: 'enum', defaultValue: 'sine', choices: ['saw', 'square', 'sine'] }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-level', type: 'number', defaultValue: 0.5, min: 0, max: 1, step: 0.01, unit: 'linear' }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-octave', type: 'number', defaultValue: 0, min: -2, max: 2, step: 1, unit: 'octaves' }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-semitone', type: 'number', defaultValue: 0, min: -12, max: 12, step: 1, unit: 'semitones' }),
+  defineParameter({ id: 'engine.virtual-analog.osc2-fine', type: 'number', defaultValue: 0, min: -100, max: 100, step: 1, unit: 'cents' }),
   defineParameter({
     id: 'engine.virtual-analog.amp-attack',
     type: 'number',

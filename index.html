@@ -337,6 +337,30 @@
               </div>
             </article>
           </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">OSC 02 · SECONDARY OSCILLATOR</h3><p class="module-subtitle">Segunda fonte por voz · afinação independente</p></div><span class="module-tag">DUAL OSC</span></div>
+            <label class="route-enable" for="osc2-enabled"><span>OSCILLATOR 02 ENABLED</span><input id="osc2-enabled" type="checkbox"/></label>
+            <div class="control-info">
+              <div class="info-tile"><span>PITCH RATIO</span><strong id="osc2-pitch-readout">0 oct · 0 st · 0 ct</strong></div>
+              <div class="info-tile"><span>MIX LEVEL</span><strong id="osc2-level-readout">50%</strong></div>
+            </div>
+            <div class="env-controls" style="margin-top:12px">
+              <div class="control"><div class="control-top"><label for="osc2-wave">WAVEFORM</label></div>
+                <select id="osc2-wave" aria-label="Oscillator 2 waveform" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="sine">SINE</option><option value="saw">SAW</option><option value="square">SQUARE</option>
+                </select>
+              </div>
+              <div class="control"><div class="control-top"><label for="osc2-level">LEVEL</label><output id="osc2-level-value">50%</output></div><input id="osc2-level" type="range" min="0" max="100" value="50"/></div>
+              <div class="control"><div class="control-top"><label for="osc2-octave">OCTAVE</label></div>
+                <select id="osc2-octave" aria-label="Oscillator 2 octave" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="-2">−2</option><option value="-1">−1</option><option value="0" selected>0</option><option value="1">+1</option><option value="2">+2</option>
+                </select>
+              </div>
+              <div class="control"><div class="control-top"><label for="osc2-semitone">SEMITONE</label><output id="osc2-semitone-value">0 st</output></div><input id="osc2-semitone" type="range" min="-12" max="12" value="0"/></div>
+              <div class="control"><div class="control-top"><label for="osc2-fine">FINE TUNE</label><output id="osc2-fine-value">0 cents</output></div><input id="osc2-fine" type="range" min="-100" max="100" value="0"/></div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">OSC 02 é somado antes do filtro e compartilha o envelope de amplitude. A mistura é normalizada para preservar o nível máximo aproximado de uma voz.</p>
+          </div>
         </section>
 
         <section class="view" data-view="control" role="tabpanel" hidden>

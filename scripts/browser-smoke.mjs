@@ -53,6 +53,12 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await page.locator('[data-wave="square"]').click();
+  await page.locator('#osc2-enabled').check();
+  await page.locator('#osc2-wave').selectOption('square');
+  await page.locator('#osc2-level').evaluate((input) => { input.value = '65'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#osc2-octave').selectOption('-1');
+  await page.locator('#osc2-semitone').evaluate((input) => { input.value = '5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#osc2-fine').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="global"]').click();
   await page.locator('#filter-mode').selectOption('lowpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -83,6 +89,12 @@ try {
   assert.equal(await page.locator('#patch-select').inputValue(), 'Browser Check',
     `Patch save failed: ${await page.locator('#message').textContent()}`);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
+  await page.locator('#osc2-enabled').uncheck();
+  await page.locator('#osc2-wave').selectOption('sine');
+  await page.locator('#osc2-level').evaluate((input) => { input.value = '10'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#osc2-octave').selectOption('1');
+  await page.locator('#osc2-semitone').evaluate((input) => { input.value = '-5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#osc2-fine').evaluate((input) => { input.value = '-25'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#master-level').evaluate((input) => {
     input.value = '90';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -110,6 +122,12 @@ try {
   assert.equal(await page.locator('#master-level').inputValue(), '42');
   assert.equal(await page.locator('#attack').inputValue(), '75');
   assert.equal(await page.locator('#waveform').inputValue(), 'square');
+  assert.equal(await page.locator('#osc2-enabled').isChecked(), true);
+  assert.equal(await page.locator('#osc2-wave').inputValue(), 'square');
+  assert.equal(await page.locator('#osc2-level').inputValue(), '65');
+  assert.equal(await page.locator('#osc2-octave').inputValue(), '-1');
+  assert.equal(await page.locator('#osc2-semitone').inputValue(), '5');
+  assert.equal(await page.locator('#osc2-fine').inputValue(), '12');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
   assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
@@ -184,7 +202,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro e Filter EG, LFO 01 e rotas da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro e OSC 02, Filter EG, LFO 01 e rotas da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

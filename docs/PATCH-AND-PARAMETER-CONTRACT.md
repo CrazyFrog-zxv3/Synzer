@@ -214,3 +214,12 @@ This is a deliberately bounded v1 matrix: it has a generic route model and valid
 ### Modulation matrix hot-path optimization
 
 The generic `computeDestination()` API remains available for validation and future routing. The current two-source filter destination now compiles enabled route amounts when routes change and uses `computeFilterCutoff()` in the sample loop. This removes per-sample route iteration and source-object lookups while retaining the same validated route model and sum semantics. The benchmark is rerun with EG 02 and LFO active to quantify the optimized render path.
+
+
+## Virtual Analog Oscillator 02
+
+A second independently configured oscillator is now available per voice. Oscillator 02 supports the same band-limited saw/square and sine waveforms as oscillator 01, with enable, waveform, level, octave, semitone and fine-cent controls. Its frequency ratio is `2 ** (octave + semitone/12 + fine/1200)`, clamped to 45% of the active sample rate. It owns an independent phase that advances while disabled and is preserved when its settings change on an active voice.
+
+When enabled, the two oscillator signals are mixed with level-weighted normalization `(osc1 + osc2 * level) / (1 + level)` before the per-voice filter, preventing the second oscillator from doubling the maximum single-voice amplitude. Both oscillators share the voice amplitude envelope, filter envelope, LFO and filter path. Oscillator 02 defaults disabled, so existing patches retain the exact single-oscillator sound.
+
+The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, unison stacks, phase offset, sub/noise oscillator or independent envelopes are implemented yet.

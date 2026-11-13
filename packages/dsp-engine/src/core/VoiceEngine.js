@@ -12,6 +12,20 @@ function assertFiniteRange(name, value, min, max) {
   }
 }
 
+function oscillatorFrequency2(baseFrequency, parameters, sampleRate) {
+  const pitchRatio = 2 ** (parameters.octave + (parameters.semitone / 12) + (parameters.fine / 1200));
+  return Math.min(baseFrequency * pitchRatio, sampleRate * 0.45);
+}
+
+function renderOscillatorSample(waveform, phase, phaseIncrement) {
+  if (waveform === 'sine') return Math.sin(2 * Math.PI * phase);
+  if (waveform === 'square') {
+    return (phase < 0.5 ? 1 : -1) + polyBlep(phase, phaseIncrement) -
+      polyBlep((phase + 0.5) % 1, phaseIncrement);
+  }
+  return (2 * phase) - 1 - polyBlep(phase, phaseIncrement);
+}
+
 function normalizeEnvelope(input = {}) {
   const envelope = { ...DEFAULT_ENVELOPE, ...input };
   assertFiniteRange('attack', envelope.attack, 0, 30);
@@ -54,6 +68,7 @@ export class VoiceEngine {
     this.parameters = createDefaultVirtualAnalogParameters();
     this.masterLevel = 1;
     this.defaultWaveform = 'saw';
+    this.defaultOscillator2 = { enabled: false, waveform: 'sine', level: 0.5, octave: 0, semitone: 0, fine: 0 };
     this.defaultEnvelope = { ...DEFAULT_ENVELOPE };
     this.defaultFilterEnvelope = {
       attack: 0.01, decay: 0.3, sustain: 0, release: 0.25, amount: 0,
@@ -82,7 +97,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), oscillator2: { ...voice.oscillator2 }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -96,6 +111,14 @@ export class VoiceEngine {
     this.parameters = normalizeVirtualAnalogParameters({ ...this.parameters, ...values });
     this.masterLevel = this.parameters['global.master-level'];
     this.defaultWaveform = this.parameters['engine.virtual-analog.osc-wave'];
+    this.defaultOscillator2 = {
+      enabled: this.parameters['engine.virtual-analog.osc2-enabled'],
+      waveform: this.parameters['engine.virtual-analog.osc2-wave'],
+      level: this.parameters['engine.virtual-analog.osc2-level'],
+      octave: this.parameters['engine.virtual-analog.osc2-octave'],
+      semitone: this.parameters['engine.virtual-analog.osc2-semitone'],
+      fine: this.parameters['engine.virtual-analog.osc2-fine'],
+    };
     this.defaultEnvelope = {
       attack: this.parameters['engine.virtual-analog.amp-attack'],
       decay: this.parameters['engine.virtual-analog.amp-decay'],
@@ -136,6 +159,9 @@ export class VoiceEngine {
       resonance: this.parameters['engine.virtual-analog.filter-resonance'],
     };
     for (const voice of this.voices.values()) {
+      Object.assign(voice.oscillator2, this.defaultOscillator2);
+      voice.oscillator2.frequency = oscillatorFrequency2(voice.frequency, voice.oscillator2, this.sampleRate);
+      voice.oscillator2.phaseIncrement = voice.oscillator2.frequency / this.sampleRate;
       voice.filterBaseCutoff = filterParameters.cutoff;
       voice.filter.setParameters(filterParameters);
       voice.lfo.amount = this.defaultLfo.amount;
@@ -166,6 +192,13 @@ export class VoiceEngine {
       throw new TypeError(`waveform must be one of: ${[...SUPPORTED_WAVEFORMS].join(', ')}.`);
     }
     const normalizedEnvelope = normalizeEnvelope(envelope);
+    const oscillator2Frequency = oscillatorFrequency2(frequency, this.defaultOscillator2, this.sampleRate);
+    const oscillator2 = {
+      ...this.defaultOscillator2,
+      phase: 0,
+      frequency: oscillator2Frequency,
+      phaseIncrement: oscillator2Frequency / this.sampleRate,
+    };
     const filterEnvelope = {
       ...this.defaultFilterEnvelope,
       stage: 'attack',
@@ -198,7 +231,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo,
+      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, lfo, oscillator2,
     };
     this.voices.set(id, voice);
     return id;
@@ -401,20 +434,19 @@ export class VoiceEngine {
         // in the snapshot. Its zero level keeps the remaining samples silent.
         if (voice.envelopeLevel <= 0) continue;
 
-        const dt = voice.phaseIncrement;
-        let oscillatorSample;
-        if (voice.waveform === 'sine') {
-          oscillatorSample = Math.sin(2 * Math.PI * voice.phase);
-        } else if (voice.waveform === 'square') {
-          oscillatorSample = (voice.phase < 0.5 ? 1 : -1) +
-            polyBlep(voice.phase, dt) - polyBlep((voice.phase + 0.5) % 1, dt);
-        } else {
-          oscillatorSample = (2 * voice.phase) - 1 - polyBlep(voice.phase, dt);
+        const oscillatorSample1 = renderOscillatorSample(voice.waveform, voice.phase, voice.phaseIncrement);
+        const oscillator2 = voice.oscillator2;
+        let oscillatorSample = oscillatorSample1;
+        if (oscillator2.enabled && oscillator2.level > 0) {
+          const oscillatorSample2 = renderOscillatorSample(oscillator2.waveform, oscillator2.phase, oscillator2.phaseIncrement);
+          oscillatorSample = (oscillatorSample1 + (oscillatorSample2 * oscillator2.level)) / (1 + oscillator2.level);
         }
         const filteredSample = voice.filter.process(oscillatorSample);
         mixed += filteredSample * voice.velocity * voice.envelopeLevel * voiceGain;
-        voice.phase += dt;
+        voice.phase += voice.phaseIncrement;
         if (voice.phase >= 1) voice.phase -= 1;
+        oscillator2.phase += oscillator2.phaseIncrement;
+        if (oscillator2.phase >= 1) oscillator2.phase -= 1;
       }
       left[i] = mixed;
       if (right !== left) right[i] = mixed;
