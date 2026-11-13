@@ -52,6 +52,30 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
     step: 0.001,
     unit: 's',
   }),
+  defineParameter({
+    id: 'engine.virtual-analog.filter-mode',
+    type: 'enum',
+    defaultValue: 'off',
+    choices: ['off', 'lowpass', 'highpass', 'bandpass'],
+  }),
+  defineParameter({
+    id: 'engine.virtual-analog.filter-cutoff',
+    type: 'number',
+    defaultValue: 12000,
+    min: 20,
+    max: 20000,
+    step: 1,
+    unit: 'Hz',
+  }),
+  defineParameter({
+    id: 'engine.virtual-analog.filter-resonance',
+    type: 'number',
+    defaultValue: Math.SQRT1_2,
+    min: 0.5,
+    max: 12,
+    step: 0.01,
+    unit: 'Q',
+  }),
 ]);
 
 export function createDefaultVirtualAnalogParameters() {
