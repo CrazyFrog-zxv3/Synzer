@@ -1,4 +1,11 @@
 import { SynzerEngine } from './packages/dsp-engine/src/core/SynzerEngine.js';
+import {
+  createVirtualAnalogPatch,
+  applyVirtualAnalogPatch,
+  savePatch,
+  listPatches,
+  loadPatch,
+} from './packages/dsp-engine/src/core/PatchStore.js';
 
 const state = document.querySelector('#state');
 const stateLabel = state.querySelector('span:last-child');
@@ -264,6 +271,73 @@ masterLevel.addEventListener('input', () => {
   masterLevelOutput.textContent = `${masterLevel.value}%`;
   applySynthParameters();
 });
+
+const patchNameInput = document.querySelector('#patch-name');
+const patchTitle = document.querySelector('#current-patch-title');
+const patchSelect = document.querySelector('#patch-select');
+const savePatchButton = document.querySelector('#save-patch');
+const loadPatchButton = document.querySelector('#load-patch');
+
+function refreshPatchList(selectedName = '') {
+  const names = listPatches(localStorage);
+  patchSelect.replaceChildren(new Option('Saved patches', ''));
+  for (const name of names) patchSelect.add(new Option(name, name));
+  patchSelect.value = selectedName;
+  loadPatchButton.disabled = names.length === 0 || !patchSelect.value;
+}
+
+patchSelect.addEventListener('change', () => {
+  loadPatchButton.disabled = !patchSelect.value;
+});
+
+savePatchButton.addEventListener('click', () => {
+  try {
+    const name = patchNameInput.value.trim();
+    const patch = createVirtualAnalogPatch(engine.getParameters(), name);
+    savePatch(localStorage, patch);
+    patchNameInput.value = patch.name;
+    patchTitle.textContent = patch.name;
+    refreshPatchList(patch.name);
+    message.textContent = `Patch "${patch.name}" salvo localmente neste navegador.`;
+  } catch (error) {
+    message.textContent = `Não foi possível salvar o patch: ${error.message}`;
+  }
+});
+
+loadPatchButton.addEventListener('click', () => {
+  try {
+    if (!patchSelect.value) return;
+    const patch = loadPatch(localStorage, patchSelect.value);
+    const parameters = applyVirtualAnalogPatch(patch);
+    masterLevel.value = String(Math.round(parameters['global.master-level'] * 100));
+    masterLevelOutput.value = `${masterLevel.value}%`;
+    masterLevelOutput.textContent = `${masterLevel.value}%`;
+    document.querySelector('#attack').value = String(Math.round(parameters['engine.virtual-analog.amp-attack'] * 1000));
+    document.querySelector('#decay').value = String(Math.round(parameters['engine.virtual-analog.amp-decay'] * 1000));
+    document.querySelector('#sustain').value = String(Math.round(parameters['engine.virtual-analog.amp-sustain'] * 100));
+    document.querySelector('#release').value = String(Math.round(parameters['engine.virtual-analog.amp-release'] * 1000));
+    for (const [id, unit] of [['attack', 'ms'], ['decay', 'ms'], ['sustain', '%'], ['release', 'ms']]) {
+      const input = document.querySelector(`#${id}`);
+      const output = document.querySelector(`#${id}-value`);
+      output.value = `${input.value}${unit}`;
+      output.textContent = `${input.value}${unit}`;
+    }
+    updateEnvelopeGraph();
+    setWaveform(parameters['engine.virtual-analog.osc-wave']);
+    engine.setParameters(parameters);
+    patchNameInput.value = patch.name;
+    patchTitle.textContent = patch.name;
+    message.textContent = `Patch "${patch.name}" carregado. Parâmetros aplicados ao motor.`;
+  } catch (error) {
+    message.textContent = `Não foi possível carregar o patch: ${error.message}`;
+  }
+});
+
+try {
+  refreshPatchList();
+} catch (error) {
+  message.textContent = `Armazenamento local indisponível: ${error.message}`;
+}
 
 document.querySelector('#stop-all').addEventListener('click', () => {
   for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
