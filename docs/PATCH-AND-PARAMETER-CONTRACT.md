@@ -101,3 +101,22 @@ The UI reads the waveform, ADSR, and master level controls and calls `SynzerEngi
 Coverage includes parameter definition/defaults, normalization and rejection, VoiceEngine rendering, SynzerEngine pre-init and live message routing, Worklet application and rejection, and a real Chromium audio integration smoke test.
 
 This is the first working parameter path, not a complete patch/preset system. Patch save/load, storage, UI preset management, migration, automation, modulation destinations and multi-engine mixing remain unimplemented.
+
+
+## Local patch storage
+
+Module: `packages/dsp-engine/src/core/PatchStore.js`
+
+The first persistence adapter stores validated v1 patches in browser `localStorage` under `synzer.patches.v1`. The storage module receives a Storage-compatible object, so its behavior can be tested without a browser.
+
+- `createVirtualAnalogPatch(parameters, name)` splits the current parameter snapshot into global and Virtual Analog engine-slot scopes.
+- `savePatch(storage, patch)` validates and serializes a patch. Existing names are rejected case-insensitively rather than silently overwritten.
+- `listPatches(storage)` returns saved patch names.
+- `loadPatch(storage, name)` returns a validated patch.
+- `applyVirtualAnalogPatch(patch)` validates runtime compatibility and produces the normalized parameter snapshot consumed by the engine.
+
+The UI now exposes a patch name, Save Patch, saved-patch selector and Load action. Loading synchronizes waveform, ADSR and master-level controls and sends the restored parameters to the live engine. Saving is explicit; no automatic writes or destructive replacement are performed.
+
+The current runtime intentionally accepts exactly one enabled Virtual Analog slot. Multi-engine patches are structurally representable by the schema but cannot be applied until the corresponding engines and mixer are implemented.
+
+Persistence is local to the browser profile/device. It is not cloud sync, backup, or cross-device transfer. Clearing browser site data can remove these patches.
