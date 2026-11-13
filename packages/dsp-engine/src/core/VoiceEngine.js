@@ -1,3 +1,5 @@
+import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
 
@@ -46,6 +48,10 @@ export class VoiceEngine {
     this.maxStealTails = Math.floor(maxStealTails);
     this.stealFadeSamples = Math.max(1, Math.round(stealFadeSeconds * sampleRate));
     this.voiceGain = voiceGain;
+    this.parameters = createDefaultVirtualAnalogParameters();
+    this.masterLevel = 1;
+    this.defaultWaveform = 'saw';
+    this.defaultEnvelope = { ...DEFAULT_ENVELOPE };
     this.voices = new Map();
     this.renderVoices = [];
     this.sequence = 0;
@@ -68,7 +74,30 @@ export class VoiceEngine {
     return voice ? { ...voice, envelope: { ...voice.envelope } } : undefined;
   }
 
-  noteOn({ id, note, frequency, velocity = 1, waveform = 'saw', envelope = DEFAULT_ENVELOPE }) {
+  getParameters() {
+    return { ...this.parameters };
+  }
+
+  setParameters(values = {}) {
+    if (values === null || typeof values !== 'object' || Array.isArray(values)) {
+      throw new TypeError('Virtual Analog parameters must be an object.');
+    }
+    this.parameters = normalizeVirtualAnalogParameters({ ...this.parameters, ...values });
+    this.masterLevel = this.parameters['global.master-level'];
+    this.defaultWaveform = this.parameters['engine.virtual-analog.osc-wave'];
+    this.defaultEnvelope = {
+      attack: this.parameters['engine.virtual-analog.amp-attack'],
+      decay: this.parameters['engine.virtual-analog.amp-decay'],
+      sustain: this.parameters['engine.virtual-analog.amp-sustain'],
+      release: this.parameters['engine.virtual-analog.amp-release'],
+    };
+    return this.getParameters();
+  }
+
+  noteOn(input = {}) {
+    const { id, note, frequency, velocity = 1 } = input;
+    const waveform = input.waveform ?? this.defaultWaveform;
+    const envelope = input.envelope ?? this.defaultEnvelope;
     if (typeof id !== 'string' || id.length === 0) throw new TypeError('Voice id must be a non-empty string.');
     if (this.voices.has(id)) throw new Error(`Voice id already exists: ${id}`);
     assertFiniteRange('note', note, 0, 127);
@@ -196,7 +225,7 @@ export class VoiceEngine {
     renderVoices.length = 0;
     for (const voice of this.voices.values()) renderVoices.push(voice);
 
-    const voiceGain = this.voiceGain;
+    const voiceGain = this.voiceGain * this.masterLevel;
     for (let i = 0; i < left.length; i++) {
       let mixed = 0;
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
