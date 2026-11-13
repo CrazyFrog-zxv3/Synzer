@@ -70,3 +70,34 @@ Unknown schema versions are rejected. No automatic migration is implemented yet.
 ## Verification
 
 Unit tests are in `packages/dsp-engine/test/PatchSchema.test.js`. CI run for the implementation commit: pending at the time this document was authored; update this statement only after checking the workflow result.
+
+
+## Virtual Analog parameter registry and runtime integration
+
+Module: `packages/dsp-engine/src/core/VirtualAnalogParameters.js`
+
+The first live parameter set is registered with stable IDs:
+
+- `global.master-level`: linear gain from 0 to 1, default 1.
+- `engine.virtual-analog.osc-wave`: `saw`, `square`, or `sine`, default `saw`.
+- `engine.virtual-analog.amp-attack`: 0 to 30 seconds, default 0.01 s.
+- `engine.virtual-analog.amp-decay`: 0 to 30 seconds, default 0.08 s.
+- `engine.virtual-analog.amp-sustain`: 0 to 1, default 0.75.
+- `engine.virtual-analog.amp-release`: 0 to 60 seconds, default 0.25 s.
+
+These defaults preserve the previous VA envelope and oscillator defaults. Master level multiplies the existing per-voice gain, so its default of 1 does not change the previous output level.
+
+### Runtime path
+
+The UI reads the waveform, ADSR, and master level controls and calls `SynzerEngine.setParameters()`. The engine validates and stores a normalized immutable parameter snapshot. If the Worklet is not initialized, the values are retained and sent immediately after the node is created. Later updates are sent through `SET_PARAMETERS` messages. The AudioWorklet applies them to the live `VoiceEngine`.
+
+- Master level is applied to all active voices on the next render quantum.
+- Waveform and ADSR become defaults for newly triggered voices. Existing voices retain the waveform/envelope with which they started.
+- NOTE_ON messages can still explicitly override waveform or envelope for compatibility with existing callers.
+- Invalid updates are rejected by the DSP engine and surfaced as `ENGINE_ERROR`; the last valid parameter state remains active.
+
+### Verification
+
+Coverage includes parameter definition/defaults, normalization and rejection, VoiceEngine rendering, SynzerEngine pre-init and live message routing, Worklet application and rejection, and a real Chromium audio integration smoke test.
+
+This is the first working parameter path, not a complete patch/preset system. Patch save/load, storage, UI preset management, migration, automation, modulation destinations and multi-engine mixing remain unimplemented.
