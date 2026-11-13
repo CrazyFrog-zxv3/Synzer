@@ -30,6 +30,7 @@ test('parameter values are strictly validated without silent clamping', () => {
   assert.throws(() => normalizeParameterValues(definitions, { 'global.master-level': 1.1 }), /range/i);
   assert.throws(() => normalizeParameterValues(definitions, { 'engine.virtual-analog.osc-wave': 'triangle' }), /choice/i);
   assert.throws(() => normalizeParameterValues(definitions, { 'global.unison': 1 }), /boolean/i);
+  assert.throws(() => normalizeParameterValues([{ id: 'bad', type: 'number', defaultValue: 1 }]), /namespaced/i);
   assert.throws(() => normalizeParameterValues(definitions, { 'global.unknown': 1 }), /unknown/i);
 });
 
@@ -48,6 +49,7 @@ test('patch keeps global parameters and per-engine-slot parameters separate', ()
   assert.equal(patch.globalParameters['global.master-level'], 0.7);
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.osc-wave'], 'square');
   assert.throws(() => createPatch({ globalParameters: { 'engine.virtual-analog.osc-wave': 'saw' } }), /scope/i);
+  assert.throws(() => createPatch({ globalParameters: { 'global.invalid': null } }), /unsupported/i);
 });
 
 test('patch rejects duplicate slot ids and malformed engine ids', () => {
