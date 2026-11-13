@@ -547,3 +547,48 @@ test('second oscillator phase advances while disabled and live changes preserve 
   assert.equal(updated.frequency, 880);
   assert.equal(updated.enabled, true);
 });
+
+
+test('modulation matrix applies EG and LFO pitch routes independently to OSC 01 and OSC 02', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.osc2-wave': 'sine',
+    'engine.virtual-analog.osc2-octave': 0,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.lfo1-waveform': 'square',
+    'engine.virtual-analog.lfo1-rate': 0.05,
+    'engine.virtual-analog.eg-osc1-pitch-amount': 12,
+    'engine.virtual-analog.eg-osc1-pitch-enabled': true,
+    'engine.virtual-analog.lfo-osc1-pitch-amount': 5,
+    'engine.virtual-analog.lfo-osc1-pitch-enabled': true,
+    'engine.virtual-analog.eg-osc2-pitch-amount': -5,
+    'engine.virtual-analog.eg-osc2-pitch-enabled': true,
+    'engine.virtual-analog.lfo-osc2-pitch-amount': 7,
+    'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
+  });
+  addVoice(engine, { id: 'pitch-routes', frequency: 440, waveform: 'sine' });
+  render(engine, 1);
+  const voice = engine.getVoice('pitch-routes');
+  const expectedOsc1 = (440 * (2 ** (17 / 12))) / engine.sampleRate;
+  const expectedOsc2 = (440 * (2 ** (2 / 12))) / engine.sampleRate;
+  assert.ok(Math.abs(voice.phase - expectedOsc1) < 1e-9, `OSC 01 phase ${voice.phase} should combine EG and LFO pitch modulation`);
+  assert.ok(Math.abs(voice.oscillator2.phase - expectedOsc2) < 1e-9, `OSC 02 phase ${voice.oscillator2.phase} should combine EG and LFO pitch modulation`);
+  assert.ok([...render(engine, 128).left].every(Number.isFinite));
+});
+
+test('pitch modulation routes default to neutral and can be disabled independently', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  candidate.setParameters({
+    'engine.virtual-analog.lfo1-waveform': 'square',
+    'engine.virtual-analog.lfo-osc1-pitch-amount': 12,
+    'engine.virtual-analog.lfo-osc1-pitch-enabled': false,
+  });
+  addVoice(baseline, { id: 'pitch-base', frequency: 440, waveform: 'sine' });
+  addVoice(candidate, { id: 'pitch-off', frequency: 440, waveform: 'sine' });
+  assert.deepEqual(render(candidate, 256).left, render(baseline, 256).left);
+});
