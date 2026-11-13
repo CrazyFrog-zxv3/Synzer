@@ -494,3 +494,56 @@ test('modulation matrix independently enables or disables EG and LFO routes to f
   assert.ok(Math.abs(engine.getVoice('matrix-routes').filter.cutoff - 1000) < 1,
     'disabling all routes must restore the unmodulated base cutoff');
 });
+
+
+test('second oscillator is disabled by default and preserves the original single-oscillator signal', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  addVoice(baseline, { waveform: 'sine', frequency: 440, id: 'baseline' });
+  addVoice(candidate, { waveform: 'sine', frequency: 440, id: 'candidate' });
+  assert.equal(candidate.getVoice('candidate').oscillator2.enabled, false);
+  assert.deepEqual(render(candidate, 512).left, render(baseline, 512).left);
+});
+
+test('second oscillator supports independent waveform, octave and level in the live render path', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.osc2-wave': 'square',
+    'engine.virtual-analog.osc2-level': 0.5,
+    'engine.virtual-analog.osc2-octave': 1,
+    'engine.virtual-analog.osc2-semitone': 0,
+    'engine.virtual-analog.osc2-fine': 0,
+  });
+  addVoice(engine, { id: 'osc2-live', frequency: 440, waveform: 'sine' });
+  const voice = engine.getVoice('osc2-live');
+  assert.equal(voice.oscillator2.enabled, true);
+  assert.equal(voice.oscillator2.waveform, 'square');
+  assert.equal(voice.oscillator2.frequency, 880);
+  assert.equal(voice.oscillator2.level, 0.5);
+  const output = render(engine, 2048).left;
+  assert.ok([...output].every(Number.isFinite));
+  assert.ok(output.some((sample) => sample !== 0));
+  assert.ok(Math.max(...output.map(Math.abs)) <= 1.001);
+});
+
+test('second oscillator phase advances while disabled and live changes preserve its phase', () => {
+  const engine = createEngine();
+  addVoice(engine, { id: 'osc2-phase', frequency: 440 });
+  render(engine, 100);
+  const phase = engine.getVoice('osc2-phase').oscillator2.phase;
+  assert.ok(phase > 0);
+  engine.setParameters({
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.osc2-wave': 'saw',
+    'engine.virtual-analog.osc2-octave': 1,
+  });
+  const updated = engine.getVoice('osc2-phase').oscillator2;
+  assert.equal(updated.phase, phase);
+  assert.equal(updated.frequency, 880);
+  assert.equal(updated.enabled, true);
+});

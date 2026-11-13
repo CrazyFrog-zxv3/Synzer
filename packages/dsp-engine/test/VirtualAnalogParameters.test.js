@@ -28,6 +28,12 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.lfo1-amount',
     'engine.virtual-analog.filter-env-route-enabled',
     'engine.virtual-analog.lfo1-route-enabled',
+    'engine.virtual-analog.osc2-enabled',
+    'engine.virtual-analog.osc2-wave',
+    'engine.virtual-analog.osc2-level',
+    'engine.virtual-analog.osc2-octave',
+    'engine.virtual-analog.osc2-semitone',
+    'engine.virtual-analog.osc2-fine',
   ]);
   assert.ok(VIRTUAL_ANALOG_PARAMETER_DEFINITIONS.every(Object.isFrozen));
 });
@@ -53,6 +59,12 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.lfo1-amount': 0,
     'engine.virtual-analog.filter-env-route-enabled': true,
     'engine.virtual-analog.lfo1-route-enabled': true,
+    'engine.virtual-analog.osc2-enabled': false,
+    'engine.virtual-analog.osc2-wave': 'sine',
+    'engine.virtual-analog.osc2-level': 0.5,
+    'engine.virtual-analog.osc2-octave': 0,
+    'engine.virtual-analog.osc2-semitone': 0,
+    'engine.virtual-analog.osc2-fine': 0,
   });
 });
 
@@ -125,4 +137,25 @@ test('modulation route enable flags are typed booleans', () => {
   assert.throws(() => normalizeVirtualAnalogParameters({
     'engine.virtual-analog.filter-env-route-enabled': 'false',
   }), /boolean/i);
+});
+
+
+test('second oscillator validates waveform, level and pitch offsets', () => {
+  const values = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.osc2-wave': 'square',
+    'engine.virtual-analog.osc2-level': 0.75,
+    'engine.virtual-analog.osc2-octave': -1,
+    'engine.virtual-analog.osc2-semitone': 7,
+    'engine.virtual-analog.osc2-fine': -25,
+  });
+  assert.equal(values['engine.virtual-analog.osc2-enabled'], true);
+  assert.equal(values['engine.virtual-analog.osc2-wave'], 'square');
+  assert.equal(values['engine.virtual-analog.osc2-level'], 0.75);
+  assert.equal(values['engine.virtual-analog.osc2-octave'], -1);
+  assert.equal(values['engine.virtual-analog.osc2-semitone'], 7);
+  assert.equal(values['engine.virtual-analog.osc2-fine'], -25);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-level': 1.1 }), /range/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-wave': 'noise' }), /choice/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-octave': 3 }), /range/i);
 });

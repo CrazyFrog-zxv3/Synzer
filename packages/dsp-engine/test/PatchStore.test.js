@@ -38,6 +38,12 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
     'engine.virtual-analog.lfo1-amount': 15,
     'engine.virtual-analog.filter-env-route-enabled': false,
     'engine.virtual-analog.lfo1-route-enabled': true,
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.osc2-wave': 'square',
+    'engine.virtual-analog.osc2-level': 0.65,
+    'engine.virtual-analog.osc2-octave': -1,
+    'engine.virtual-analog.osc2-semitone': 5,
+    'engine.virtual-analog.osc2-fine': 12,
   }, 'Warm Square');
   assert.equal(patch.name, 'Warm Square');
   assert.equal(patch.globalParameters['global.master-level'], 0.65);
@@ -53,6 +59,10 @@ test('Virtual Analog patch captures global and engine parameters in separate sco
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-amount'], 15);
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.filter-env-route-enabled'], false);
   assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.lfo1-route-enabled'], true);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.osc2-enabled'], true);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.osc2-wave'], 'square');
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.osc2-level'], 0.65);
+  assert.equal(patch.engineSlots[0].parameters['engine.virtual-analog.osc2-octave'], -1);
 });
 
 test('Virtual Analog patch application restores normalized engine parameters', () => {
@@ -73,6 +83,9 @@ test('Virtual Analog patch application restores normalized engine parameters', (
   assert.equal(parameters['engine.virtual-analog.lfo1-amount'], 0);
   assert.equal(parameters['engine.virtual-analog.filter-env-route-enabled'], true);
   assert.equal(parameters['engine.virtual-analog.lfo1-route-enabled'], true);
+  assert.equal(parameters['engine.virtual-analog.osc2-enabled'], false);
+  assert.equal(parameters['engine.virtual-analog.osc2-wave'], 'sine');
+  assert.equal(parameters['engine.virtual-analog.osc2-level'], 0.5);
 });
 
 test('local patch store saves, lists and loads without overwriting duplicate names', () => {
