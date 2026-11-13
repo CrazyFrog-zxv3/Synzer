@@ -163,6 +163,7 @@
     .control {
       min-width: 0; padding: 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: #1a222e;
     }
+    .master-level-control { margin-top: 12px; }
     .control-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 9px; }
     .control label { color: #bdc7d6; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
     .control output { color: var(--accent); font-size: 10px; font-weight: 850; font-variant-numeric: tabular-nums; }
@@ -322,7 +323,7 @@
               <div class="info-tile"><span>OSCILLATORS</span><strong>1 per voice</strong></div>
               <div class="info-tile"><span>VOICE LIMIT</span><strong>12 voices</strong></div>
             </div>
-            <div class="control" style="margin-top:12px">
+            <div class="control master-level-control">
               <div class="control-top"><label for="master-level">MASTER LEVEL</label><output id="master-level-value" for="master-level">100%</output></div>
               <input id="master-level" type="range" min="0" max="100" value="100" />
               <p class="control-hint">Ganho global linear · atualização em tempo real</p>
