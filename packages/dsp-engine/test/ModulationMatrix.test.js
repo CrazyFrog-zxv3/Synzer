@@ -61,3 +61,17 @@ test('compiled filter-cutoff route coefficients match the generic matrix sum', (
   matrix.setRoute('eg-filter', { enabled: false });
   assert.equal(matrix.computeFilterCutoff(1, 1), -6);
 });
+
+
+test('modulation matrix compiles independent pitch destinations for both oscillators', () => {
+  const matrix = new ModulationMatrix([
+    { id: 'lfo-osc1', source: 'lfo-1', destination: 'oscillator-1-pitch', amount: 7, enabled: true },
+    { id: 'eg-osc2', source: 'filter-envelope', destination: 'oscillator-2-pitch', amount: -12, enabled: true },
+  ]);
+  assert.equal(matrix.lfoOsc1PitchAmount, 7);
+  assert.equal(matrix.filterEnvelopeOsc2PitchAmount, -12);
+  assert.equal(matrix.filterEnvelopeOsc1PitchAmount, 0);
+  assert.equal(matrix.lfoOsc2PitchAmount, 0);
+  assert.equal(matrix.computeDestination('oscillator-1-pitch', { 'lfo-1': 1 }), 7);
+  assert.equal(matrix.computeDestination('oscillator-2-pitch', { 'filter-envelope': 1 }), -12);
+});
