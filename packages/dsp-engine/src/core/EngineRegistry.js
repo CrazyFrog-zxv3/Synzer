@@ -1,3 +1,5 @@
+import { VoiceEngine } from './VoiceEngine.js';
+
 const FAMILY_DEFINITIONS = [
   { id: 'virtual-analog', label: 'Virtual Analog', status: 'available', description: 'Subtractive synthesis with oscillators and envelopes.' },
   { id: 'wavetable', label: 'Wavetable', status: 'planned', description: 'Table scanning and spectral frame interpolation.' },
@@ -57,4 +59,15 @@ export class EngineRegistry {
       [...this.#engines.values()].map(({ descriptor }) => descriptor),
     );
   }
+}
+
+/** Create the runtime registry with only engines that have a real implementation. */
+export function createDefaultEngineRegistry() {
+  const registry = new EngineRegistry();
+  registry.register({
+    id: 'virtual-analog',
+    label: 'Virtual Analog',
+    create: (options) => new VoiceEngine(options),
+  });
+  return registry;
 }
