@@ -1,0 +1,9 @@
+{
+  "name": "synzer",
+  "private": true,
+  "version": "0.3.0-dev",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
