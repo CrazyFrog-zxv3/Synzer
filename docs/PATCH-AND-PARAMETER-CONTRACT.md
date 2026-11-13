@@ -201,19 +201,19 @@ The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a wave
 A validated modulation-routing layer now sits between per-voice modulation sources and DSP destinations.
 
 Supported sources: `filter-envelope` (EG 02) and `lfo-1`.
-Supported destination: `filter-cutoff`.
+Supported destinations: `filter-cutoff`, `oscillator-1-pitch` and `oscillator-2-pitch`.
 Each route has a stable ID, source, destination, bipolar amount in semitones and enabled flag. The matrix validates source/destination IDs, route IDs, duplicate IDs, amount bounds and boolean enable state; invalid route updates are rejected atomically. `computeDestination()` sums only enabled routes and returns the destination modulation in semitones.
 
 The Virtual Analog engine now computes filter cutoff modulation through this matrix rather than directly adding source values. Two default routes are registered: `filter-eg-to-cutoff` and `lfo-1-to-cutoff`. Route amounts remain stored in the existing EG/LFO parameters; two new boolean parameters independently enable/disable the routes. This preserves saved patch structure and defaults both routes to enabled with zero depth.
 
 The MATRIX UI now exposes the two route enable toggles and depth controls. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
 
-This is a deliberately bounded v1 matrix: it has a generic route model and validation, but only two registered sources and one destination. Pitch, amplitude, pan, oscillator parameters, additional destinations, user-created routes and per-layer routing are not implemented yet.
+This is a deliberately bounded matrix: it supports two registered sources and three destinations. Amplitude, pan, wavetable position, user-created route graphs, tempo-synced sources and per-layer routing are not implemented yet.
 
 
 ### Modulation matrix hot-path optimization
 
-The generic `computeDestination()` API remains available for validation and future routing. The current two-source filter destination now compiles enabled route amounts when routes change and uses `computeFilterCutoff()` in the sample loop. This removes per-sample route iteration and source-object lookups while retaining the same validated route model and sum semantics. The benchmark is rerun with EG 02 and LFO active to quantify the optimized render path.
+The generic `computeDestination()` API remains available for validation and future routing. Each destination compiles enabled route amounts when routes change. The sample loop snapshots the coefficients once per render quantum and performs direct source-value multiplications, avoiding per-sample route iteration and source-object lookups.
 
 
 ## Virtual Analog Oscillator 02
@@ -223,3 +223,12 @@ A second independently configured oscillator is now available per voice. Oscilla
 When enabled, the two oscillator signals are mixed with level-weighted normalization `(osc1 + osc2 * level) / (1 + level)` before the per-voice filter, preventing the second oscillator from doubling the maximum single-voice amplitude. Both oscillators share the voice amplitude envelope, filter envelope, LFO and filter path. Oscillator 02 defaults disabled, so existing patches retain the exact single-oscillator sound.
 
 The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, unison stacks, phase offset, sub/noise oscillator or independent envelopes are implemented yet.
+
+
+## Modulation Matrix v2 · oscillator pitch destinations
+
+The Virtual Analog matrix now compiles six fixed routes: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
+
+Per render quantum, route amounts are snapshotted from the compiled matrix. Per sample, the EG/LFO source values produce separate pitch offsets for each oscillator. The offsets modify phase increments exponentially (`2 ** (semitones / 12)`), with oscillator frequency capped at 45% of sample rate; PolyBLEP receives the modulated increment for discontinuous waveforms. OSC 01 and OSC 02 remain independently routable. No pitch glide/smoothing, dynamic user-created route graph, additional modulation sources, or pitch destinations for future engines are claimed.
+
+New parameter IDs: `eg-osc1-pitch-amount`, `eg-osc1-pitch-enabled`, `lfo-osc1-pitch-amount`, `lfo-osc1-pitch-enabled`, `eg-osc2-pitch-amount`, `eg-osc2-pitch-enabled`, `lfo-osc2-pitch-amount`, `lfo-osc2-pitch-enabled`, all under `engine.virtual-analog.`. Existing PatchStore schema normalizes missing values to neutral defaults, retaining compatibility with earlier local patches.
