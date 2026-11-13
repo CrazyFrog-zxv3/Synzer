@@ -86,6 +86,8 @@ export class SynzerEngine {
   }
 
   async noteOff(voiceId) {
+    // Unknown or already-cleared handles must not initialize (or recreate) the audio graph.
+    if (!this.handles.has(voiceId)) return false;
     await this.initialize();
     if (!this.handles.has(voiceId)) return false;
     this.node.port.postMessage({ type: 'NOTE_OFF', voiceId });
