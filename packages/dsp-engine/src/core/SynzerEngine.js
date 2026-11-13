@@ -1,3 +1,5 @@
+import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+
 export class SynzerEngine {
   constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, onError = null } = {}) {
     this.audioContextFactory = audioContextFactory;
@@ -14,6 +16,7 @@ export class SynzerEngine {
     this.noteStacks = new Map();
     this.lifecycleGeneration = 0;
     this.processorFailure = null;
+    this.parameters = createDefaultVirtualAnalogParameters();
   }
 
   async initialize() {
@@ -96,6 +99,7 @@ export class SynzerEngine {
         assertCurrent();
         this.processorFailure = null;
         this.node = node;
+        node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.parameters });
       } catch (error) {
         node.disconnect();
         node.port.close();
@@ -110,11 +114,27 @@ export class SynzerEngine {
     }
   }
 
-  async noteOn({ note, frequency, velocity = 1, waveform = 'saw', envelope } = {}) {
+  getParameters() {
+    return { ...this.parameters };
+  }
+
+  setParameters(values = {}) {
+    if (values === null || typeof values !== 'object' || Array.isArray(values)) {
+      throw new TypeError('Virtual Analog parameters must be an object.');
+    }
+    const next = normalizeVirtualAnalogParameters({ ...this.parameters, ...values });
+    this.parameters = next;
+    if (this.node && !this.processorFailure) {
+      this.node.port.postMessage({ type: 'SET_PARAMETERS', parameters: next });
+    }
+    return this.getParameters();
+  }
+
+  async noteOn({ note, frequency, velocity = 1, waveform, envelope } = {}) {
     await this.initialize();
     if (this.processorFailure) throw this.processorFailure;
     const voiceId = `synzer-voice-${++this.voiceSequence}`;
-    const voice = { id: voiceId, note, frequency, velocity, waveform, envelope };
+    const voice = { id: voiceId, note, frequency, velocity, ...(waveform === undefined ? {} : { waveform }), ...(envelope === undefined ? {} : { envelope }) };
     this.node.port.postMessage({ type: 'NOTE_ON', voice });
     this.handles.set(voiceId, note);
     const stack = this.noteStacks.get(note) ?? [];
