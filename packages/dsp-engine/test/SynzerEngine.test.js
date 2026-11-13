@@ -154,3 +154,21 @@ test('close during asynchronous worklet loading invalidates initialization safel
     assert.equal(h.counters.connect, 0);
   } finally { h.restore(); }
 });
+
+
+test('reuses the existing worklet node but resumes a suspended AudioContext', async () => {
+  const h = createHarness();
+  try {
+    await h.engine.initialize();
+    assert.equal(h.context.state, 'running');
+    h.context.state = 'suspended';
+    h.counters.resume = 0;
+
+    await h.engine.initialize();
+
+    assert.equal(h.counters.resume, 1);
+    assert.equal(h.context.state, 'running');
+    assert.equal(h.counters.addModule, 1);
+    assert.equal(h.counters.connect, 1);
+  } finally { await h.engine.close(); h.restore(); }
+});
