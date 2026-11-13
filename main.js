@@ -1,90 +1,222 @@
 import { SynzerEngine } from './packages/dsp-engine/src/core/SynzerEngine.js';
 
 const state = document.querySelector('#state');
+const stateLabel = state.querySelector('span:last-child');
 const message = document.querySelector('#message');
 const voiceCount = document.querySelector('#voice-count');
 const workletState = document.querySelector('#worklet-state');
 const keyboard = document.querySelector('#keyboard');
 const activePointers = new Map();
+
 const engine = new SynzerEngine({
   maxVoices: 12,
   onError: (error) => {
     message.textContent = `Erro no processador de áudio: ${error.message}`;
-    workletState.textContent = 'Erro no processador';
-    state.textContent = 'API COM ERRO';
+    workletState.textContent = 'WORKLET ERROR';
+    stateLabel.textContent = 'ENGINE ERROR';
     state.classList.remove('on');
   },
 });
-let triggered = 0;
-const midiNotes = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79];
 
-const readWaveform = () => document.querySelector('#waveform').value;
+const midiNotes = Array.from({ length: 13 }, (_, index) => 60 + index);
+const whiteOffsets = [0, 2, 4, 5, 7, 9, 11, 12];
+const whiteLabels = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+const blackKeys = [
+  { offset: 1, left: 8.75, label: 'C♯' },
+  { offset: 3, left: 21.25, label: 'D♯' },
+  { offset: 6, left: 46.25, label: 'F♯' },
+  { offset: 8, left: 58.75, label: 'G♯' },
+  { offset: 10, left: 71.25, label: 'A♯' },
+];
 
-const readEnvelope = () => ({
-  attack: Number(document.querySelector('#attack').value) / 1000,
-  decay: Number(document.querySelector('#decay').value) / 1000,
-  sustain: Number(document.querySelector('#sustain').value) / 100,
-  release: Number(document.querySelector('#release').value) / 1000,
-});
-
-for (const [id, unit, divisor] of [['attack','ms',1],['decay','ms',1],['sustain','%',1],['release','ms',1]]) {
-  const input = document.querySelector(`#${id}`);
-  const output = document.querySelector(`#${id}-value`);
-  input.addEventListener('input', () => { output.value = `${input.value}${unit}`; output.textContent = `${input.value}${unit}`; });
+function frequencyForMidi(note) {
+  return 440 * (2 ** ((note - 69) / 12));
 }
 
-function frequencyForMidi(note) { return 440 * (2 ** ((note - 69) / 12)); }
+function readWaveform() {
+  return document.querySelector('#waveform').value;
+}
 
-function releasePointer(pointerId) {
-  const record = activePointers.get(pointerId);
-  if (!record) return;
-  record.released = true;
-  record.button.classList.remove('down');
-  if (record.voiceId) {
-    engine.noteOff(record.voiceId).catch((error) => { message.textContent = error.message; });
-    activePointers.delete(pointerId);
+function readEnvelope() {
+  return {
+    attack: Number(document.querySelector('#attack').value) / 1000,
+    decay: Number(document.querySelector('#decay').value) / 1000,
+    sustain: Number(document.querySelector('#sustain').value) / 100,
+    release: Number(document.querySelector('#release').value) / 1000,
+  };
+}
+
+function setWaveform(waveform) {
+  const select = document.querySelector('#waveform');
+  select.value = waveform;
+  document.querySelectorAll('[data-wave]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.wave === waveform));
+  });
+  updateWaveformScope(waveform);
+}
+
+function updateWaveformScope(waveform) {
+  const path = document.querySelector('#wave-path');
+  if (!path) return;
+
+  if (waveform === 'sine') {
+    path.setAttribute('d', 'M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90');
+  } else if (waveform === 'square') {
+    path.setAttribute('d', 'M0 145 H80 V35 H160 V145 H240 V35 H320 V145 H400 V35 H480 V145 H560 V35 H640');
+  } else {
+    path.setAttribute('d', 'M0 150 L80 30 V150 L160 30 V150 L240 30 V150 L320 30 V150 L400 30 V150 L480 30 V150 L560 30 V150 L640 30');
   }
 }
 
-midiNotes.forEach((note) => {
+function updateEnvelopeGraph() {
+  const attack = Number(document.querySelector('#attack').value);
+  const decay = Number(document.querySelector('#decay').value);
+  const sustain = Number(document.querySelector('#sustain').value) / 100;
+  const release = Number(document.querySelector('#release').value);
+
+  const attackX = 28 + (attack / 1000) * 120;
+  const decayX = attackX + 44 + (decay / 2000) * 116;
+  const sustainY = 180 - (sustain * 145);
+  const releaseStartX = Math.min(490, Math.max(410, decayX + 110));
+  const releaseEndX = 585 - (release / 3000) * 36;
+  const path = `M0 180 L${attackX} 18 L${decayX} ${sustainY} L${releaseStartX} ${sustainY} L${releaseEndX} 180`;
+
+  document.querySelector('#env-path').setAttribute('d', path);
+  document.querySelector('#env-fill').setAttribute('d', `${path} Z`);
+  document.querySelector('#env-a').setAttribute('cx', String(attackX));
+  document.querySelector('#env-a').setAttribute('cy', '18');
+  document.querySelector('#env-d').setAttribute('cx', String(decayX));
+  document.querySelector('#env-d').setAttribute('cy', String(sustainY));
+  document.querySelector('#env-r').setAttribute('cx', String(releaseEndX));
+}
+
+function syncHeldKeys() {
+  const held = [...activePointers.values()].filter((record) => record.voiceId && !record.released).length;
+  voiceCount.textContent = String(held);
+}
+
+function releasePointer(pointerId) {
+  const record = activePointers.get(pointerId);
+  if (!record || record.released) return;
+
+  record.released = true;
+  record.button.classList.remove('down');
+
+  if (record.voiceId) {
+    engine.noteOff(record.voiceId).catch((error) => {
+      message.textContent = `Falha ao liberar nota: ${error.message}`;
+    });
+    activePointers.delete(pointerId);
+  }
+  syncHeldKeys();
+}
+
+function createKey(note, kind, left, width, label) {
   const button = document.createElement('button');
-  button.className = 'key';
+  button.className = `key ${kind}`;
   button.type = 'button';
-  button.textContent = `MIDI ${note}`;
+  button.style.left = `${left}%`;
+  button.style.width = `${width}%`;
+  button.textContent = label;
   button.setAttribute('aria-label', `Nota MIDI ${note}`);
   button.addEventListener('pointerdown', (event) => {
     event.preventDefault();
-    button.setPointerCapture(event.pointerId);
+    try { button.setPointerCapture(event.pointerId); } catch {}
     button.classList.add('down');
+
     const record = { button, released: false, voiceId: null };
     activePointers.set(event.pointerId, record);
-    engine.noteOn({ note, frequency: frequencyForMidi(note), velocity: 0.85, waveform: readWaveform(), envelope: readEnvelope() }).then((voiceId) => {
+    syncHeldKeys();
+
+    engine.noteOn({
+      note,
+      frequency: frequencyForMidi(note),
+      velocity: 0.85,
+      waveform: readWaveform(),
+      envelope: readEnvelope(),
+    }).then(async (voiceId) => {
       record.voiceId = voiceId;
-      triggered++;
-      voiceCount.textContent = String(triggered);
-      state.textContent = 'API ATIVA';
       state.classList.add('on');
-      workletState.textContent = 'Módulo carregado';
+      stateLabel.textContent = 'ENGINE READY';
+      workletState.textContent = 'AUDIOWORKLET READY';
+
       if (record.released) {
-        engine.noteOff(voiceId).catch((error) => { message.textContent = error.message; });
+        await engine.noteOff(voiceId);
+        if (activePointers.get(event.pointerId) === record) {
+          activePointers.delete(event.pointerId);
+        }
+      } else {
+        message.textContent = `Nota MIDI ${note} ativa · ${readWaveform().toUpperCase()}`;
+      }
+      syncHeldKeys();
+    }).catch((error) => {
+      if (activePointers.get(event.pointerId) === record) {
         activePointers.delete(event.pointerId);
       }
-    }).catch((error) => {
-      activePointers.delete(event.pointerId);
       button.classList.remove('down');
+      syncHeldKeys();
       message.textContent = `Falha ao iniciar áudio: ${error.message}`;
-      workletState.textContent = 'Falha';
+      workletState.textContent = 'WORKLET FAILED';
+      state.classList.remove('on');
+      stateLabel.textContent = 'ENGINE OFF';
     });
   });
+
   button.addEventListener('pointerup', (event) => releasePointer(event.pointerId));
   button.addEventListener('pointercancel', (event) => releasePointer(event.pointerId));
   button.addEventListener('lostpointercapture', (event) => releasePointer(event.pointerId));
-  keyboard.append(button);
+  return button;
+}
+
+// White keys are rendered first. Black keys are layered above them like a piano.
+whiteOffsets.forEach((offset, index) => {
+  keyboard.append(createKey(60 + offset, 'white', index * 12.5, 12.5, whiteLabels[index]));
+});
+blackKeys.forEach(({ offset, left, label }) => {
+  keyboard.append(createKey(60 + offset, 'black', left, 7.5, label));
 });
 
-document.querySelector('#stop-all').addEventListener('click', async () => {
+// The editor tabs are navigation only; future DSP modules are clearly marked as planned.
+document.querySelectorAll('[data-tab]').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    document.querySelectorAll('[data-tab]').forEach((item) => {
+      item.setAttribute('aria-selected', String(item === tab));
+    });
+    document.querySelectorAll('[data-view]').forEach((view) => {
+      view.hidden = view.dataset.view !== target;
+    });
+  });
+});
+
+document.querySelectorAll('[data-wave]').forEach((button) => {
+  button.addEventListener('click', () => setWaveform(button.dataset.wave));
+});
+
+for (const [id, unit] of [
+  ['attack', 'ms'],
+  ['decay', 'ms'],
+  ['sustain', '%'],
+  ['release', 'ms'],
+]) {
+  const input = document.querySelector(`#${id}`);
+  const output = document.querySelector(`#${id}-value`);
+  input.addEventListener('input', () => {
+    output.value = `${input.value}${unit}`;
+    output.textContent = `${input.value}${unit}`;
+    updateEnvelopeGraph();
+  });
+}
+
+document.querySelector('#stop-all').addEventListener('click', () => {
   for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
-  message.textContent = 'Notas seguradas liberadas. Caudas de release continuam até terminar.';
+  message.textContent = 'Notas liberadas. As caudas ADSR continuam até o fim do release.';
 });
 
-window.addEventListener('pagehide', () => { engine.close().catch(() => {}); });
+setWaveform('saw');
+updateEnvelopeGraph();
+syncHeldKeys();
+
+window.addEventListener('pagehide', () => {
+  engine.close().catch(() => {});
+});
