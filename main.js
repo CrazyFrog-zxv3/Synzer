@@ -92,6 +92,9 @@ function readSynthParameters() {
     'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
     'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
     'engine.virtual-analog.amp-release': Number(document.querySelector('#release').value) / 1000,
+    'engine.virtual-analog.filter-mode': document.querySelector('#filter-mode').value,
+    'engine.virtual-analog.filter-cutoff': Math.round(20 * (1000 ** (Number(document.querySelector('#filter-cutoff').value) / 1000))),
+    'engine.virtual-analog.filter-resonance': Number(document.querySelector('#filter-resonance').value) / 100,
   };
 }
 
@@ -272,9 +275,27 @@ masterLevel.addEventListener('input', () => {
   applySynthParameters();
 });
 
+filterMode.addEventListener('change', applySynthParameters);
+filterCutoff.addEventListener('input', () => {
+  const cutoff = Math.round(20 * (1000 ** (Number(filterCutoff.value) / 1000)));
+  filterCutoffOutput.value = cutoff >= 1000 ? `${(cutoff / 1000).toFixed(2)} kHz` : `${cutoff} Hz`;
+  filterCutoffOutput.textContent = filterCutoffOutput.value;
+  applySynthParameters();
+});
+filterResonance.addEventListener('input', () => {
+  filterResonanceOutput.value = `${(Number(filterResonance.value) / 100).toFixed(2)} Q`;
+  filterResonanceOutput.textContent = filterResonanceOutput.value;
+  applySynthParameters();
+});
+
 const patchNameInput = document.querySelector('#patch-name');
 const patchTitle = document.querySelector('#current-patch-title');
 const patchSelect = document.querySelector('#patch-select');
+const filterMode = document.querySelector('#filter-mode');
+const filterCutoff = document.querySelector('#filter-cutoff');
+const filterCutoffOutput = document.querySelector('#filter-cutoff-value');
+const filterResonance = document.querySelector('#filter-resonance');
+const filterResonanceOutput = document.querySelector('#filter-resonance-value');
 const savePatchButton = document.querySelector('#save-patch');
 const loadPatchButton = document.querySelector('#load-patch');
 
@@ -316,6 +337,13 @@ loadPatchButton.addEventListener('click', () => {
     document.querySelector('#decay').value = String(Math.round(parameters['engine.virtual-analog.amp-decay'] * 1000));
     document.querySelector('#sustain').value = String(Math.round(parameters['engine.virtual-analog.amp-sustain'] * 100));
     document.querySelector('#release').value = String(Math.round(parameters['engine.virtual-analog.amp-release'] * 1000));
+    filterMode.value = parameters['engine.virtual-analog.filter-mode'];
+    filterCutoff.value = String(Math.round(Math.log(parameters['engine.virtual-analog.filter-cutoff'] / 20) / Math.log(1000) * 1000));
+    filterCutoffOutput.value = parameters['engine.virtual-analog.filter-cutoff'] >= 1000 ? `${(parameters['engine.virtual-analog.filter-cutoff'] / 1000).toFixed(2)} kHz` : `${Math.round(parameters['engine.virtual-analog.filter-cutoff'])} Hz`;
+    filterCutoffOutput.textContent = filterCutoffOutput.value;
+    filterResonance.value = String(Math.round(parameters['engine.virtual-analog.filter-resonance'] * 100));
+    filterResonanceOutput.value = `${parameters['engine.virtual-analog.filter-resonance'].toFixed(2)} Q`;
+    filterResonanceOutput.textContent = filterResonanceOutput.value;
     for (const [id, unit] of [['attack', 'ms'], ['decay', 'ms'], ['sustain', '%'], ['release', 'ms']]) {
       const input = document.querySelector(`#${id}`);
       const output = document.querySelector(`#${id}-value`);
