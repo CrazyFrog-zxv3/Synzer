@@ -55,6 +55,28 @@ button.addEventListener('click', async () => {
       await engine.noteOff(rapidVoice);
       await new Promise((resolve) => setTimeout(resolve, 4));
     }
+
+    const soakPairs = 250;
+    for (let index = 0; index < soakPairs; index++) {
+      const voiceId = await engine.noteOn({
+        note: 48 + (index % 24),
+        frequency: 130.8128 * (2 ** ((index % 24) / 12)),
+        velocity: 0.2,
+        waveform: ['sine', 'saw', 'square'][index % 3],
+        envelope: { attack: 0, decay: 0, sustain: 1, release: 0.005 },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      await engine.noteOff(voiceId);
+    }
+    if (engine.handles.size !== 0 || engine.noteStacks.size !== 0) {
+      throw new Error(`Vazamento de handles após stress: handles=${engine.handles.size}, noteStacks=${engine.noteStacks.size}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    analyser.getFloatTimeDomainData(samples);
+    const residualRms = Math.sqrt(samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length);
+    if (!Number.isFinite(residualRms) || residualRms > 0.002) {
+      throw new Error(`A saída não retornou ao silêncio após as notas: RMS=${residualRms}`);
+    }
     if (workletErrors.length) throw workletErrors[0];
 
     await firstContext.suspend();
@@ -92,6 +114,10 @@ button.addEventListener('click', async () => {
       audioWorkletLoaded: true,
       failedWorkletLoadRetry: 'passed',
       rapidNoteOnOffPairs: 40,
+      repeatedNoteStressPairs: soakPairs,
+      activeHandlesAfterStress: engine.handles.size,
+      noteStacksAfterStress: engine.noteStacks.size,
+      residualRmsAfterRelease: Number(residualRms.toFixed(7)),
       workletErrors: workletErrors.length,
       measuredRms: Number(rms.toFixed(6)),
       suspendResume: 'passed',
@@ -101,7 +127,7 @@ button.addEventListener('click', async () => {
       latency,
     }, null, 2);
     status.dataset.status = 'pass';
-    status.textContent = 'PASS: polifonia, áudio, ciclo de vida e reinicialização verificados';
+    status.textContent = 'PASS: polifonia, stress, liberação e ciclo de vida verificados';
   } catch (error) {
     if (engine) await engine.close().catch(() => {});
     status.dataset.status = 'fail';
