@@ -54,7 +54,9 @@ try {
     checks: [
       'AudioContext iniciado por interação real',
       'AudioWorklet carregado no Chromium',
+      'Falha de carregamento do Worklet recuperada sem duplicar o nó',
       '12 vozes simultâneas produziram sinal mensurável no AnalyserNode',
+      '40 pares rápidos de NOTE_ON/NOTE_OFF sem erro de Worklet',
       'AudioContext suspendeu, retomou e fechou corretamente',
       'Motor reinicializou após close sem reutilizar o contexto anterior',
       'Teclado da interface principal iniciou uma nota',
