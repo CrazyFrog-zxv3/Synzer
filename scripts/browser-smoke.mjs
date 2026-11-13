@@ -63,7 +63,13 @@ try {
   });
   await page.locator('#patch-name').fill('Browser Check');
   await page.locator('#save-patch').click();
-  await page.waitForFunction(() => document.querySelector('#patch-select')?.value === 'Browser Check');
+  await page.waitForFunction(() => {
+    const saved = document.querySelector('#patch-select')?.value === 'Browser Check';
+    const failed = document.querySelector('#message')?.textContent.includes('Não foi possível salvar');
+    return saved || failed;
+  });
+  assert.equal(await page.locator('#patch-select').inputValue(), 'Browser Check',
+    `Patch save failed: ${await page.locator('#message').textContent()}`);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   await page.locator('#master-level').evaluate((input) => {
     input.value = '90';
