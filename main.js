@@ -86,6 +86,25 @@ function readEnvelope() {
   };
 }
 
+function readSynthParameters() {
+  return {
+    'global.master-level': Number(document.querySelector('#master-level').value) / 100,
+    'engine.virtual-analog.osc-wave': readWaveform(),
+    'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
+    'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
+    'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
+    'engine.virtual-analog.amp-release': Number(document.querySelector('#release').value) / 1000,
+  };
+}
+
+function applySynthParameters() {
+  try {
+    engine.setParameters(readSynthParameters());
+  } catch (error) {
+    message.textContent = `Parâmetros rejeitados: ${error.message}`;
+  }
+}
+
 function setWaveform(waveform) {
   const select = document.querySelector('#waveform');
   select.value = waveform;
@@ -93,6 +112,7 @@ function setWaveform(waveform) {
     button.setAttribute('aria-pressed', String(button.dataset.wave === waveform));
   });
   updateWaveformScope(waveform);
+  applySynthParameters();
 }
 
 function updateWaveformScope(waveform) {
@@ -168,12 +188,11 @@ function createKey(note, kind, left, width, label) {
     activePointers.set(event.pointerId, record);
     syncHeldKeys();
 
+    applySynthParameters();
     engine.noteOn({
       note,
       frequency: frequencyForMidi(note),
       velocity: 0.85,
-      waveform: readWaveform(),
-      envelope: readEnvelope(),
     }).then(async (voiceId) => {
       record.voiceId = voiceId;
       observeAudioContext(engine.context);
@@ -243,8 +262,17 @@ for (const [id, unit] of [
     output.value = `${input.value}${unit}`;
     output.textContent = `${input.value}${unit}`;
     updateEnvelopeGraph();
+    applySynthParameters();
   });
 }
+
+const masterLevel = document.querySelector('#master-level');
+const masterLevelOutput = document.querySelector('#master-level-value');
+masterLevel.addEventListener('input', () => {
+  masterLevelOutput.value = `${masterLevel.value}%`;
+  masterLevelOutput.textContent = `${masterLevel.value}%`;
+  applySynthParameters();
+});
 
 document.querySelector('#stop-all').addEventListener('click', () => {
   for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
