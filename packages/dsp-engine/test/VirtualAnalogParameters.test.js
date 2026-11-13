@@ -11,6 +11,12 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
   assert.deepEqual(ids, [
     'global.master-level',
     'engine.virtual-analog.osc-wave',
+    'engine.virtual-analog.osc2-enabled',
+    'engine.virtual-analog.osc2-wave',
+    'engine.virtual-analog.osc2-level',
+    'engine.virtual-analog.osc2-octave',
+    'engine.virtual-analog.osc2-semitone',
+    'engine.virtual-analog.osc2-fine',
     'engine.virtual-analog.amp-attack',
     'engine.virtual-analog.amp-decay',
     'engine.virtual-analog.amp-sustain',
@@ -28,12 +34,6 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.lfo1-amount',
     'engine.virtual-analog.filter-env-route-enabled',
     'engine.virtual-analog.lfo1-route-enabled',
-    'engine.virtual-analog.osc2-enabled',
-    'engine.virtual-analog.osc2-wave',
-    'engine.virtual-analog.osc2-level',
-    'engine.virtual-analog.osc2-octave',
-    'engine.virtual-analog.osc2-semitone',
-    'engine.virtual-analog.osc2-fine',
   ]);
   assert.ok(VIRTUAL_ANALOG_PARAMETER_DEFINITIONS.every(Object.isFrozen));
 });
