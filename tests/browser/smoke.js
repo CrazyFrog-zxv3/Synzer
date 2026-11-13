@@ -8,7 +8,13 @@ button.addEventListener('click', async () => {
   button.disabled = true;
   let engine;
   try {
-    engine = new SynzerEngine({ maxVoices: 12 });
+    const workletErrors = [];
+    engine = new SynzerEngine({ maxVoices: 12, onError: (error) => workletErrors.push(error) });
+    engine.workletUrl = new URL('./missing-synzer-processor.js', import.meta.url);
+    let initialLoadRejected = false;
+    try { await engine.initialize(); } catch { initialLoadRejected = true; }
+    if (!initialLoadRejected || engine.node) throw new Error('Falha de carregamento do Worklet não foi isolada corretamente.');
+    engine.workletUrl = new URL('../../packages/dsp-engine/src/worklets/synzer-processor.js', import.meta.url);
     await engine.initialize();
     const firstContext = engine.context;
     if (firstContext.state !== 'running') throw new Error(`AudioContext não está running: ${firstContext.state}`);
@@ -36,6 +42,20 @@ button.addEventListener('click', async () => {
 
     for (const voiceId of voiceIds) await engine.noteOff(voiceId);
     await new Promise((resolve) => setTimeout(resolve, 120));
+
+    for (let index = 0; index < 40; index++) {
+      const rapidVoice = await engine.noteOn({
+        note: 60 + (index % 12),
+        frequency: 261.6256 * (2 ** ((index % 12) / 12)),
+        velocity: 0.25,
+        waveform: ['sine', 'saw', 'square'][index % 3],
+        envelope: { attack: 0, decay: 0, sustain: 1, release: 0.005 },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 4));
+      await engine.noteOff(rapidVoice);
+      await new Promise((resolve) => setTimeout(resolve, 4));
+    }
+    if (workletErrors.length) throw workletErrors[0];
 
     await firstContext.suspend();
     if (firstContext.state !== 'suspended') throw new Error(`AudioContext não suspendeu: ${firstContext.state}`);
@@ -70,6 +90,9 @@ button.addEventListener('click', async () => {
       sampleRate,
       simultaneousVoices: voiceIds.length,
       audioWorkletLoaded: true,
+      failedWorkletLoadRetry: 'passed',
+      rapidNoteOnOffPairs: 40,
+      workletErrors: workletErrors.length,
       measuredRms: Number(rms.toFixed(6)),
       suspendResume: 'passed',
       repeatedClose: 'passed',
