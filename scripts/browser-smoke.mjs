@@ -72,6 +72,12 @@ try {
   await page.locator('#filter-env-route-enabled').uncheck();
   await page.locator('#lfo1-route-enabled').check();
   await page.locator('#lfo1-amount').evaluate((input) => { input.value = '15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#eg-osc1-amount').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#eg-osc1-enabled').uncheck();
+  await page.locator('#lfo-osc1-amount').evaluate((input) => { input.value = '-5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#eg-osc2-amount').evaluate((input) => { input.value = '3'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#lfo-osc2-amount').evaluate((input) => { input.value = '7'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#lfo-osc2-enabled').uncheck();
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('triangle');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -142,6 +148,12 @@ try {
   assert.equal(await page.locator('#lfo1-amount').inputValue(), '15');
   assert.equal(await page.locator('#filter-env-route-enabled').isChecked(), false);
   assert.equal(await page.locator('#lfo1-route-enabled').isChecked(), true);
+  assert.equal(await page.locator('#eg-osc1-amount').inputValue(), '12');
+  assert.equal(await page.locator('#eg-osc1-enabled').isChecked(), false);
+  assert.equal(await page.locator('#lfo-osc1-amount').inputValue(), '-5');
+  assert.equal(await page.locator('#eg-osc2-amount').inputValue(), '3');
+  assert.equal(await page.locator('#lfo-osc2-amount').inputValue(), '7');
+  assert.equal(await page.locator('#lfo-osc2-enabled').isChecked(), false);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -203,7 +215,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro e OSC 02, Filter EG, LFO 01 e rotas da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro e OSC 02, Filter EG, LFO 01, rotas de cutoff e quatro rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,
