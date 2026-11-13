@@ -403,7 +403,7 @@
 
         <section class="view" data-view="matrix" role="tabpanel" hidden>
           <div class="module">
-            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING 01</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING V2</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
             <div class="module-grid">
               <article class="module">
                 <div class="module-head"><div><h3 class="module-title">SOURCE · EG 02</h3><p class="module-subtitle">Filter envelope → filter cutoff</p></div><span class="module-tag">ROUTE 01</span></div>
@@ -431,8 +431,32 @@
                   <p class="control-hint">Profundidade bipolar · soma com EG 02</p>
                 </div>
               </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → OSC 01 PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 01 PITCH</strong></div></div>
+                <label class="route-enable" for="eg-osc1-enabled"><span>ROUTE ENABLED</span><input id="eg-osc1-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-osc1-amount">PITCH AMOUNT</label><output id="eg-osc1-amount-value">0 st</output></div><input id="eg-osc1-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → OSC 02 PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 02 PITCH</strong></div></div>
+                <label class="route-enable" for="eg-osc2-enabled"><span>ROUTE ENABLED</span><input id="eg-osc2-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-osc2-amount">PITCH AMOUNT</label><output id="eg-osc2-amount-value">0 st</output></div><input id="eg-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → OSC 01 PITCH</h3><p class="module-subtitle">LFO 01 → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 01 PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-osc1-enabled"><span>ROUTE ENABLED</span><input id="lfo-osc1-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-osc1-amount">PITCH AMOUNT</label><output id="lfo-osc1-amount-value">0 st</output></div><input id="lfo-osc1-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → OSC 02 PITCH</h3><p class="module-subtitle">LFO 01 → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 02 PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-osc2-enabled"><span>ROUTE ENABLED</span><input id="lfo-osc2-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-osc2-amount">PITCH AMOUNT</label><output id="lfo-osc2-amount-value">0 st</output></div><input id="lfo-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
             </div>
-            <p class="control-hint" style="margin-top:12px">Matriz v1: duas fontes independentes para cutoff. A arquitetura valida fontes, destinos, IDs e valores. Novos destinos (pitch, amplitude, wavetable position), fontes e rotas editáveis serão adicionados progressivamente.</p>
+            <p class="control-hint" style="margin-top:12px">Matriz v2: EG 02 e LFO 01 podem modular cutoff, pitch de OSC 01 e pitch de OSC 02. Cada rota tem profundidade bipolar e ativação independente. As rotas são compiladas no runtime antes do processamento por amostra.</p>
           </div>
         </section>
         <section class="view" data-view="modifiers" role="tabpanel" hidden>
@@ -444,7 +468,7 @@
             </svg>
             <div class="scope-footer"><span>−1.0</span><span>LFO CYCLE</span><span>+1.0</span></div>
             <div class="control-info" style="margin-top:12px">
-              <div class="info-tile"><span>ROUTE</span><strong>LFO 01 → FILTER CUTOFF</strong></div>
+              <div class="info-tile"><span>ROUTE</span><strong>LFO 01 → MATRIX DESTINATIONS</strong></div>
               <div class="info-tile"><span>VOICE MODE</span><strong>RETRIGGER / PER VOICE</strong></div>
             </div>
             <div class="env-controls" style="margin-top:12px">
@@ -461,11 +485,11 @@
               </div>
               <div class="control-info">
                 <div class="info-tile"><span>ROUTE DEPTH</span><strong id="lfo1-amount-readout">0 st</strong></div>
-                <div class="info-tile"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
+                <div class="info-tile"><span>DESTINATION</span><strong>FILTER + OSC PITCH</strong></div>
               </div>
-              <p class="control-hint">A profundidade e a ativação da rota são editadas na MODULATION MATRIX.</p>
+              <p class="control-hint">A profundidade e a ativação de cada destino são editadas na MODULATION MATRIX.</p>
             </div>
-            <p class="control-hint" style="margin-top:12px">A profundidade zero desativa a modulação audível, mas o oscilador continua avançando. A matriz de destinos múltiplos ainda é planejada.</p>
+            <p class="control-hint" style="margin-top:12px">A profundidade zero desativa a modulação audível, mas o oscilador continua avançando. O LFO pode modular cutoff e pitch dos dois osciladores.</p>
           </div>
         </section>
         <section class="view" data-view="global" role="tabpanel" hidden>
