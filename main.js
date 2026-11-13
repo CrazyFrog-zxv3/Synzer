@@ -275,6 +275,12 @@ masterLevel.addEventListener('input', () => {
   applySynthParameters();
 });
 
+const filterMode = document.querySelector('#filter-mode');
+const filterCutoff = document.querySelector('#filter-cutoff');
+const filterCutoffOutput = document.querySelector('#filter-cutoff-value');
+const filterResonance = document.querySelector('#filter-resonance');
+const filterResonanceOutput = document.querySelector('#filter-resonance-value');
+
 filterMode.addEventListener('change', applySynthParameters);
 filterCutoff.addEventListener('input', () => {
   const cutoff = Math.round(20 * (1000 ** (Number(filterCutoff.value) / 1000)));
@@ -291,11 +297,6 @@ filterResonance.addEventListener('input', () => {
 const patchNameInput = document.querySelector('#patch-name');
 const patchTitle = document.querySelector('#current-patch-title');
 const patchSelect = document.querySelector('#patch-select');
-const filterMode = document.querySelector('#filter-mode');
-const filterCutoff = document.querySelector('#filter-cutoff');
-const filterCutoffOutput = document.querySelector('#filter-cutoff-value');
-const filterResonance = document.querySelector('#filter-resonance');
-const filterResonanceOutput = document.querySelector('#filter-resonance-value');
 const savePatchButton = document.querySelector('#save-patch');
 const loadPatchButton = document.querySelector('#load-patch');
 
