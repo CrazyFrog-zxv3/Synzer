@@ -288,3 +288,50 @@ test('Virtual Analog parameters set defaults for new voices and master level for
   assert.throws(() => engine.setParameters({ 'global.master-level': 1.5 }), /range/i);
   assert.equal(engine.getParameters()['global.master-level'], 0.25);
 });
+
+
+test('Virtual Analog filter parameters update active voices in the live render path', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 500,
+    'engine.virtual-analog.filter-resonance': 0.707,
+  });
+  addVoice(engine, { id: 'filter-live', frequency: 6000, waveform: 'sine' });
+  const before = engine.getVoice('filter-live').filter;
+  assert.equal(before.mode, 'lowpass');
+  assert.equal(before.cutoff, 500);
+  engine.setParameters({
+    'engine.virtual-analog.filter-mode': 'highpass',
+    'engine.virtual-analog.filter-cutoff': 2500,
+  });
+  const after = engine.getVoice('filter-live').filter;
+  assert.equal(after.mode, 'highpass');
+  assert.equal(after.cutoff, 2500);
+  const output = new Float32Array(2048);
+  engine.render(output);
+  assert.ok([...output].every(Number.isFinite));
+  assert.ok(output.some((sample) => sample !== 0));
+});
+
+test('each voice owns independent filter integrator state', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.osc-wave': 'sine',
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+  });
+  addVoice(engine, { id: 'filter-a', note: 60, frequency: 261.63 });
+  addVoice(engine, { id: 'filter-b', note: 64, frequency: 329.63 });
+  const output = new Float32Array(128);
+  engine.render(output);
+  const a = engine.getVoice('filter-a').filterState;
+  const b = engine.getVoice('filter-b').filterState;
+  assert.notDeepEqual(a, b);
+});
