@@ -47,6 +47,28 @@ try {
   await page.locator('#message').filter({ hasText: /Nota MIDI 60 ativa/ }).waitFor({ timeout: 15000 });
   assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
   await page.mouse.up();
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForFunction(() => document.querySelector('#state')?.textContent.includes('BACKGROUND'));
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForFunction(() => document.querySelector('#state')?.textContent.includes('ENGINE READY'));
+
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+  await page.waitForFunction(() => document.querySelector('#state')?.textContent.includes('ENGINE CLOSED'));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await page.waitForTimeout(50);
+  assert.match(await page.locator('#state').textContent(), /ENGINE CLOSED/,
+    'pageshow não deve recriar ou retomar o áudio automaticamente');
+  await firstKey.click();
+  await page.waitForFunction(() => document.querySelector('#state')?.textContent.includes('ENGINE READY'));
+  assert.match(await page.locator('#message').textContent(), /Nota MIDI 60 ativa/);
+
   assert.deepEqual(pageErrors, [], `Browser page errors: ${pageErrors.join('; ')}`);
 
   const viewportResults = [];
@@ -69,9 +91,11 @@ try {
       'AudioWorklet carregado no Chromium',
       'Falha de carregamento do Worklet recuperada sem duplicar o nó',
       '12 vozes simultâneas produziram sinal mensurável no AnalyserNode',
-      '40 pares rápidos de NOTE_ON/NOTE_OFF sem erro de Worklet',
+      '250 pares repetidos de NOTE_ON/NOTE_OFF sem handles presos',
       'AudioContext suspendeu, retomou e fechou corretamente',
-      'Motor reinicializou após close sem reutilizar o contexto anterior',
+      'Estado de fundo/primeiro plano foi refletido sem retomada automática',
+      'pagehide fechou o áudio e pageshow preservou estado fechado',
+      'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
     ],
     audioHarness: JSON.parse(harnessDetails),
