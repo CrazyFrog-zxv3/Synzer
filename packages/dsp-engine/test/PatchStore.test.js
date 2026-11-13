@@ -50,6 +50,7 @@ test('local patch store saves, lists and loads without overwriting duplicate nam
   assert.deepEqual(listPatches(storage), ['Soft']);
   assert.deepEqual(loadPatch(storage, 'Soft'), patch);
   assert.throws(() => savePatch(storage, patch), /already exists/i);
+  assert.throws(() => savePatch(storage, createVirtualAnalogPatch({}, 'soft')), /already exists/i);
 });
 
 test('patch store rejects malformed storage and unsupported engines on apply', () => {
