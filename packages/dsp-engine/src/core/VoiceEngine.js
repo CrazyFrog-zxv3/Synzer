@@ -145,13 +145,11 @@ export class VoiceEngine {
         amount: this.defaultFilterEnvelope.amount,
         enabled: this.parameters['engine.virtual-analog.filter-env-route-enabled'],
       },
-      {
-        id: 'lfo-1-to-cutoff',
-        source: 'lfo-1',
-        destination: 'filter-cutoff',
-        amount: this.defaultLfo.amount,
-        enabled: this.parameters['engine.virtual-analog.lfo1-route-enabled'],
-      },
+      { id: 'lfo-1-to-cutoff', source: 'lfo-1', destination: 'filter-cutoff', amount: this.defaultLfo.amount, enabled: this.parameters['engine.virtual-analog.lfo1-route-enabled'] },
+      { id: 'eg-to-osc1-pitch', source: 'filter-envelope', destination: 'oscillator-1-pitch', amount: this.parameters['engine.virtual-analog.eg-osc1-pitch-amount'], enabled: this.parameters['engine.virtual-analog.eg-osc1-pitch-enabled'] },
+      { id: 'lfo-to-osc1-pitch', source: 'lfo-1', destination: 'oscillator-1-pitch', amount: this.parameters['engine.virtual-analog.lfo-osc1-pitch-amount'], enabled: this.parameters['engine.virtual-analog.lfo-osc1-pitch-enabled'] },
+      { id: 'eg-to-osc2-pitch', source: 'filter-envelope', destination: 'oscillator-2-pitch', amount: this.parameters['engine.virtual-analog.eg-osc2-pitch-amount'], enabled: this.parameters['engine.virtual-analog.eg-osc2-pitch-enabled'] },
+      { id: 'lfo-to-osc2-pitch', source: 'lfo-1', destination: 'oscillator-2-pitch', amount: this.parameters['engine.virtual-analog.lfo-osc2-pitch-amount'], enabled: this.parameters['engine.virtual-analog.lfo-osc2-pitch-enabled'] },
     ]);
     const filterParameters = {
       mode: this.parameters['engine.virtual-analog.filter-mode'],
@@ -413,6 +411,10 @@ export class VoiceEngine {
     // per render quantum, keeping the per-sample path to two multiplies and one sum.
     const filterEnvelopeCutoffAmount = this.modulationMatrix.filterEnvelopeCutoffAmount;
     const lfoCutoffAmount = this.modulationMatrix.lfoCutoffAmount;
+    const egOsc1PitchAmount = this.modulationMatrix.filterEnvelopeOsc1PitchAmount;
+    const lfoOsc1PitchAmount = this.modulationMatrix.lfoOsc1PitchAmount;
+    const egOsc2PitchAmount = this.modulationMatrix.filterEnvelopeOsc2PitchAmount;
+    const lfoOsc2PitchAmount = this.modulationMatrix.lfoOsc2PitchAmount;
     for (let i = 0; i < left.length; i++) {
       let mixed = 0;
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
@@ -420,6 +422,8 @@ export class VoiceEngine {
         this.#advanceEnvelope(voice);
         const filterEnvelopeLevel = this.#advanceFilterEnvelope(voice);
         const lfoValue = voice.lfo.oscillator.nextSample();
+        const osc1PitchSemitones = (filterEnvelopeLevel * egOsc1PitchAmount) + (lfoValue * lfoOsc1PitchAmount);
+        const osc2PitchSemitones = (filterEnvelopeLevel * egOsc2PitchAmount) + (lfoValue * lfoOsc2PitchAmount);
         const semitones = (filterEnvelopeLevel * filterEnvelopeCutoffAmount) + (lfoValue * lfoCutoffAmount);
         if (voice.filter.mode !== 'off') {
           const modulatedCutoff = semitones === 0
@@ -434,18 +438,24 @@ export class VoiceEngine {
         // in the snapshot. Its zero level keeps the remaining samples silent.
         if (voice.envelopeLevel <= 0) continue;
 
-        const oscillatorSample1 = renderOscillatorSample(voice.waveform, voice.phase, voice.phaseIncrement);
+        const oscillatorPhaseIncrement1 = osc1PitchSemitones === 0
+          ? voice.phaseIncrement
+          : Math.min(this.sampleRate * 0.45, voice.frequency * (2 ** (osc1PitchSemitones / 12))) / this.sampleRate;
+        const oscillatorSample1 = renderOscillatorSample(voice.waveform, voice.phase, oscillatorPhaseIncrement1);
         const oscillator2 = voice.oscillator2;
+        const oscillatorPhaseIncrement2 = osc2PitchSemitones === 0
+          ? oscillator2.phaseIncrement
+          : Math.min(this.sampleRate * 0.45, oscillator2.frequency * (2 ** (osc2PitchSemitones / 12))) / this.sampleRate;
         let oscillatorSample = oscillatorSample1;
         if (oscillator2.enabled && oscillator2.level > 0) {
-          const oscillatorSample2 = renderOscillatorSample(oscillator2.waveform, oscillator2.phase, oscillator2.phaseIncrement);
+          const oscillatorSample2 = renderOscillatorSample(oscillator2.waveform, oscillator2.phase, oscillatorPhaseIncrement2);
           oscillatorSample = (oscillatorSample1 + (oscillatorSample2 * oscillator2.level)) / (1 + oscillator2.level);
         }
         const filteredSample = voice.filter.process(oscillatorSample);
         mixed += filteredSample * voice.velocity * voice.envelopeLevel * voiceGain;
-        voice.phase += voice.phaseIncrement;
+        voice.phase += oscillatorPhaseIncrement1;
         if (voice.phase >= 1) voice.phase -= 1;
-        oscillator2.phase += oscillator2.phaseIncrement;
+        oscillator2.phase += oscillatorPhaseIncrement2;
         if (oscillator2.phase >= 1) oscillator2.phase -= 1;
       }
       left[i] = mixed;
