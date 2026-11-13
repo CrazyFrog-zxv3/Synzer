@@ -1,102 +1,227 @@
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
 
-function finiteRange(name, value, min, max) {
-  if (!Number.isFinite(value) || value < min || value > max) throw new RangeError(`${name} must be between ${min} and ${max}.`);
+function assertFiniteRange(name, value, min, max) {
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new RangeError(`${name} must be finite and between ${min} and ${max}.`);
+  }
 }
-function envelopeOf(input = {}) {
-  const e = { ...DEFAULT_ENVELOPE, ...input };
-  finiteRange('attack', e.attack, 0, 30);
-  finiteRange('decay', e.decay, 0, 30);
-  finiteRange('sustain', e.sustain, 0, 1);
-  finiteRange('release', e.release, 0, 60);
-  return e;
+
+function normalizeEnvelope(input = {}) {
+  const envelope = { ...DEFAULT_ENVELOPE, ...input };
+  assertFiniteRange('attack', envelope.attack, 0, 30);
+  assertFiniteRange('decay', envelope.decay, 0, 30);
+  assertFiniteRange('sustain', envelope.sustain, 0, 1);
+  assertFiniteRange('release', envelope.release, 0, 60);
+  return envelope;
 }
+
+/** PolyBLEP residual for a discontinuity at phase wrap. dt is cycles/sample. */
 export function polyBlep(phase, dt) {
   if (!(dt > 0) || dt >= 0.5) return 0;
-  if (phase < dt) { const t = phase / dt; return t + t - t * t - 1; }
-  if (phase > 1 - dt) { const t = (phase - 1) / dt; return t * t + t + t + 1; }
+  if (phase < dt) {
+    const t = phase / dt;
+    return t + t - t * t - 1;
+  }
+  if (phase > 1 - dt) {
+    const t = (phase - 1) / dt;
+    return t * t + t + t + 1;
+  }
   return 0;
 }
+
+/**
+ * Deterministic, allocation-light sample renderer shared by tests and AudioWorklet.
+ * This is an initial polyphonic Virtual Analog core, not yet a complete synth.
+ */
 export class VoiceEngine {
   constructor({ sampleRate, maxVoices = 12, maxStealTails = 4, stealFadeSeconds = 0.005, voiceGain = 0.075 } = {}) {
-    finiteRange('sampleRate', sampleRate, 8000, 384000);
-    finiteRange('maxVoices', maxVoices, 1, 256);
-    finiteRange('voiceGain', voiceGain, 0, 1);
+    assertFiniteRange('sampleRate', sampleRate, 8000, 384000);
+    assertFiniteRange('maxVoices', maxVoices, 1, 256);
+    assertFiniteRange('maxStealTails', maxStealTails, 0, 32);
+    assertFiniteRange('stealFadeSeconds', stealFadeSeconds, 0.001, 0.1);
+    assertFiniteRange('voiceGain', voiceGain, 0, 1);
     this.sampleRate = sampleRate;
     this.maxVoices = Math.floor(maxVoices);
+    this.maxStealTails = Math.floor(maxStealTails);
+    this.stealFadeSamples = Math.max(1, Math.round(stealFadeSeconds * sampleRate));
     this.voiceGain = voiceGain;
-    this.fadeSamples = Math.max(1, Math.round(stealFadeSeconds * sampleRate));
-    this.maxStealTails = maxStealTails;
     this.voices = new Map();
     this.renderVoices = [];
     this.sequence = 0;
   }
+
   get voiceCount() { return this.voices.size; }
-  get activeVoiceCount() { return [...this.voices.values()].filter(v => v.stage !== 'steal').length; }
-  get stealTailCount() { return [...this.voices.values()].filter(v => v.stage === 'steal').length; }
-  getVoice(id) { const v = this.voices.get(id); return v ? { ...v, envelope: { ...v.envelope } } : undefined; }
-  noteOn({ id = `voice-${++this.sequence}`, note, frequency, velocity = 1, waveform = 'saw', envelope = DEFAULT_ENVELOPE } = {}) {
-    if (typeof id !== 'string' || !id || this.voices.has(id)) throw new TypeError('Voice id must be a unique non-empty string.');
-    finiteRange('note', note, 0, 127); finiteRange('frequency', frequency, 0.001, this.sampleRate * 0.499);
-    finiteRange('velocity', velocity, 0, 1);
-    if (!SUPPORTED_WAVEFORMS.has(waveform)) throw new TypeError('Unsupported waveform.');
-    if (this.activeVoiceCount >= this.maxVoices) {
-      const victim = [...this.voices.values()].find(v => v.stage === 'release') ?? this.voices.values().next().value;
-      if (!victim) throw new Error('Polyphony limit reached.');
-      if (this.stealTailCount >= this.maxStealTails) throw new Error('Steal-tail capacity reached.');
-      victim.stage = 'steal'; victim.fadeLeft = this.fadeSamples; victim.fadeStart = victim.level;
+  get activeVoiceCount() {
+    let count = 0;
+    this.voices.forEach((voice) => { if (voice.stage !== 'steal') count++; });
+    return count;
+  }
+  get stealTailCount() {
+    let count = 0;
+    this.voices.forEach((voice) => { if (voice.stage === 'steal') count++; });
+    return count;
+  }
+
+  getVoice(id) {
+    const voice = this.voices.get(id);
+    return voice ? { ...voice, envelope: { ...voice.envelope } } : undefined;
+  }
+
+  noteOn({ id, note, frequency, velocity = 1, waveform = 'saw', envelope = DEFAULT_ENVELOPE }) {
+    if (typeof id !== 'string' || id.length === 0) throw new TypeError('Voice id must be a non-empty string.');
+    if (this.voices.has(id)) throw new Error(`Voice id already exists: ${id}`);
+    assertFiniteRange('note', note, 0, 127);
+    assertFiniteRange('frequency', frequency, 0.001, this.sampleRate * 0.499);
+    assertFiniteRange('velocity', velocity, 0, 1);
+    if (!SUPPORTED_WAVEFORMS.has(waveform)) {
+      throw new TypeError(`waveform must be one of: ${[...SUPPORTED_WAVEFORMS].join(', ')}.`);
     }
-    const e = envelopeOf(envelope);
-    this.voices.set(id, { id, note, frequency, velocity, waveform, phase: 0, phaseStep: frequency / this.sampleRate,
-      stage: 'attack', envelope: e, level: 0, stageSamples: 0, releaseStep: 0, fadeLeft: 0, fadeStart: 0 });
+    const normalizedEnvelope = normalizeEnvelope(envelope);
+
+    if (this.activeVoiceCount >= this.maxVoices) {
+      if (this.stealTailCount >= this.maxStealTails) throw new Error('Steal-tail capacity reached; retry after the current audio block.');
+      this.#stealOneVoice();
+    }
+    if (this.activeVoiceCount >= this.maxVoices) throw new Error('Polyphony limit reached; no voice could be allocated.');
+
+    const voice = {
+      id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
+      stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
+      stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
+      stealRemaining: 0, stealStartLevel: 0,
+    };
+    this.voices.set(id, voice);
     return id;
   }
+
   noteOff(id) {
-    const v = this.voices.get(id);
-    if (!v || v.stage === 'release' || v.stage === 'steal') return false;
-    if (v.envelope.release === 0 || v.level <= 0) { this.voices.delete(id); return true; }
-    v.stage = 'release'; v.stageSamples = 0;
-    v.releaseStep = v.level / Math.max(1, Math.round(v.envelope.release * this.sampleRate));
+    const voice = this.voices.get(id);
+    if (!voice || voice.stage === 'release' || voice.stage === 'steal') return false;
+    if (voice.envelope.release === 0 || voice.envelopeLevel <= 0) {
+      this.voices.delete(id);
+      return true;
+    }
+    voice.stage = 'release';
+    voice.stageSamples = 0;
+    voice.releaseStartLevel = voice.envelopeLevel;
+    voice.releaseStep = voice.releaseStartLevel / Math.max(1, Math.round(voice.envelope.release * this.sampleRate));
     return true;
   }
-  advance(v) {
-    const e = v.envelope;
-    if (v.stage === 'attack') {
-      const n = Math.round(e.attack * this.sampleRate);
-      if (!n) { v.level = 1; v.stage = e.decay ? 'decay' : 'sustain'; v.stageSamples = 0; }
-      else if (++v.stageSamples >= n) { v.level = 1; v.stage = e.decay ? 'decay' : 'sustain'; v.stageSamples = 0; }
-      else v.level = Math.min(1, v.stageSamples / n);
-    } else if (v.stage === 'decay') {
-      const n = Math.round(e.decay * this.sampleRate);
-      if (!n || ++v.stageSamples >= n) { v.level = e.sustain; v.stage = 'sustain'; v.stageSamples = 0; }
-      else v.level = 1 - (1 - e.sustain) * (v.stageSamples / n);
-    } else if (v.stage === 'release') {
-      v.level = Math.max(0, v.level - v.releaseStep);
-      if (++v.stageSamples >= Math.max(1, Math.round(e.release * this.sampleRate)) || v.level <= 0) this.voices.delete(v.id);
-    } else if (v.stage === 'steal') {
-      v.level = v.fadeStart * Math.max(0, --v.fadeLeft) / this.fadeSamples;
-      if (v.fadeLeft <= 0) this.voices.delete(v.id);
-    } else v.level = e.sustain;
+
+  #stealOneVoice() {
+    let candidate;
+    // Prefer an existing release tail; among equal states, steal the oldest.
+    this.voices.forEach((voice) => {
+      if (voice.stage === 'steal') return;
+      if (!candidate || (voice.stage === 'release' && candidate.stage !== 'release') ||
+          (voice.stage === candidate.stage && voice.startedAt < candidate.startedAt)) candidate = voice;
+    });
+    if (!candidate) return;
+    candidate.stage = 'steal';
+    candidate.stealRemaining = this.stealFadeSamples;
+    candidate.stealStartLevel = candidate.envelopeLevel;
+    candidate.stageSamples = 0;
   }
-  render(left, right = left) {
-    if (!(left instanceof Float32Array) || !(right instanceof Float32Array) || left.length !== right.length) throw new TypeError('Output channels must be equal-length Float32Arrays.');
-    left.fill(0); if (right !== left) right.fill(0);
-    const voices = this.renderVoices; voices.length = 0;
-    for (const v of this.voices.values()) voices.push(v);
-    for (let i = 0; i < left.length; i++) {
-      let mix = 0;
-      for (const v of voices) {
-        this.advance(v); if (v.level <= 0) continue;
-        const p = v.phase, dt = v.phaseStep;
-        let sample;
-        if (v.waveform === 'sine') sample = Math.sin(2 * Math.PI * p);
-        else if (v.waveform === 'square') sample = (p < 0.5 ? 1 : -1) + polyBlep(p, dt) - polyBlep((p + 0.5) % 1, dt);
-        else sample = 2 * p - 1 - polyBlep(p, dt);
-        mix += sample * v.velocity * v.level * this.voiceGain;
-        v.phase += dt; if (v.phase >= 1) v.phase -= 1;
+
+  #advanceEnvelope(voice) {
+    const env = voice.envelope;
+    switch (voice.stage) {
+      case 'attack': {
+        const total = Math.round(env.attack * this.sampleRate);
+        if (total === 0) {
+          voice.envelopeLevel = 1;
+          voice.stage = env.decay === 0 ? 'sustain' : 'decay';
+          voice.stageSamples = 0;
+        } else {
+          voice.envelopeLevel = Math.min(1, voice.envelopeLevel + 1 / total);
+          voice.stageSamples++;
+          if (voice.stageSamples >= total) {
+            voice.envelopeLevel = 1;
+            voice.stage = env.decay === 0 ? 'sustain' : 'decay';
+            voice.stageSamples = 0;
+          }
+        }
+        break;
       }
-      left[i] = mix; if (right !== left) right[i] = mix;
+      case 'decay': {
+        const total = Math.round(env.decay * this.sampleRate);
+        if (total === 0) {
+          voice.envelopeLevel = env.sustain;
+          voice.stage = 'sustain';
+        } else {
+          voice.envelopeLevel = Math.max(env.sustain, voice.envelopeLevel - (1 - env.sustain) / total);
+          voice.stageSamples++;
+          if (voice.stageSamples >= total) {
+            voice.envelopeLevel = env.sustain;
+            voice.stage = 'sustain';
+            voice.stageSamples = 0;
+          }
+        }
+        break;
+      }
+      case 'release':
+        voice.envelopeLevel = Math.max(0, voice.envelopeLevel - voice.releaseStep);
+        voice.stageSamples++;
+        if (voice.envelopeLevel <= 0 || voice.stageSamples >= Math.max(1, Math.round(env.release * this.sampleRate))) {
+          voice.envelopeLevel = 0;
+          this.voices.delete(voice.id);
+        }
+        break;
+      case 'steal':
+        voice.stealRemaining--;
+        voice.envelopeLevel = voice.stealStartLevel * Math.max(0, voice.stealRemaining / this.stealFadeSamples);
+        if (voice.stealRemaining <= 0) {
+          voice.envelopeLevel = 0;
+          this.voices.delete(voice.id);
+        }
+        break;
+      case 'sustain':
+      default:
+        voice.envelopeLevel = env.sustain;
+        break;
+    }
+  }
+
+  render(left, right = left) {
+    if (!(left instanceof Float32Array)) throw new TypeError('Left output must be a Float32Array.');
+    if (right !== left && !(right instanceof Float32Array)) throw new TypeError('Right output must be a Float32Array.');
+    if (right.length !== left.length) throw new RangeError('Output channels must have equal lengths.');
+    left.fill(0);
+    if (right !== left) right.fill(0);
+
+    // Snapshot voice references once per render quantum. The scratch array is reused,
+    // avoiding a Map callback/iterator allocation for every individual output sample.
+    const renderVoices = this.renderVoices;
+    renderVoices.length = 0;
+    for (const voice of this.voices.values()) renderVoices.push(voice);
+
+    const voiceGain = this.voiceGain;
+    for (let i = 0; i < left.length; i++) {
+      let mixed = 0;
+      for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
+        const voice = renderVoices[voiceIndex];
+        this.#advanceEnvelope(voice);
+        // A voice can expire in the middle of this block while its reference remains
+        // in the snapshot. Its zero level keeps the remaining samples silent.
+        if (voice.envelopeLevel <= 0) continue;
+
+        const dt = voice.phaseIncrement;
+        let oscillatorSample;
+        if (voice.waveform === 'sine') {
+          oscillatorSample = Math.sin(2 * Math.PI * voice.phase);
+        } else if (voice.waveform === 'square') {
+          oscillatorSample = (voice.phase < 0.5 ? 1 : -1) +
+            polyBlep(voice.phase, dt) - polyBlep((voice.phase + 0.5) % 1, dt);
+        } else {
+          oscillatorSample = (2 * voice.phase) - 1 - polyBlep(voice.phase, dt);
+        }
+        mixed += oscillatorSample * voice.velocity * voice.envelopeLevel * voiceGain;
+        voice.phase += dt;
+        if (voice.phase >= 1) voice.phase -= 1;
+      }
+      left[i] = mixed;
+      if (right !== left) right[i] = mixed;
     }
   }
 }
