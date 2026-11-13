@@ -15,6 +15,12 @@ const engine = new VoiceEngine({
   voiceGain: 0.075,
 });
 
+engine.setParameters({
+  'engine.virtual-analog.filter-mode': 'lowpass',
+  'engine.virtual-analog.filter-cutoff': 2400,
+  'engine.virtual-analog.filter-resonance': 4,
+});
+
 for (let index = 0; index < voiceCount; index++) {
   engine.noteOn({
     id: 'bench-' + index,
@@ -55,6 +61,7 @@ console.log(JSON.stringify({
   blockSize,
   voices: voiceCount,
   waveforms: 'saw/square/sine mixed',
+  filter: 'TPT lowpass, 2.4 kHz, Q 4, per voice',
   measuredBlocks,
   meanMsPerBlock: Number(mean.toFixed(5)),
   p95BatchMsPerBlock: Number(p95.toFixed(5)),
