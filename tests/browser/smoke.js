@@ -81,15 +81,6 @@ button.addEventListener('click', async () => {
       'engine.virtual-analog.lfo-osc2-pitch-amount': -3,
       'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
     });
-    const filterModeChecks = [];
-    for (const mode of ['notch', 'allpass']) {
-      engine.setParameters({ 'engine.virtual-analog.filter-mode': mode });
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      leftAnalyser.getFloatTimeDomainData(new Float32Array(leftAnalyser.fftSize));
-      filterModeChecks.push(mode);
-    }
-    engine.setParameters({ 'engine.virtual-analog.filter-mode': 'lowpass' });
-
     const voiceIds = [];
     for (let index = 0; index < 12; index++) {
       voiceIds.push(await engine.noteOn({
@@ -101,6 +92,19 @@ button.addEventListener('click', async () => {
 
     engine.setParameters({ 'global.master-level': 0.25 });
     await new Promise((resolve) => setTimeout(resolve, 220));
+    const filterModeChecks = [];
+    for (const mode of ['notch', 'allpass']) {
+      engine.setParameters({ 'engine.virtual-analog.filter-mode': mode });
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const modeSamples = new Float32Array(leftAnalyser.fftSize);
+      leftAnalyser.getFloatTimeDomainData(modeSamples);
+      const modeRms = Math.sqrt(modeSamples.reduce((sum, sample) => sum + sample * sample, 0) / modeSamples.length);
+      if (!Number.isFinite(modeRms) || modeRms < 0.0001) {
+        throw new Error(`Filtro ${mode} não produziu sinal finito e mensurável (RMS=${modeRms}).`);
+      }
+      filterModeChecks.push({ mode, rms: Number(modeRms.toFixed(6)) });
+    }
+    engine.setParameters({ 'engine.virtual-analog.filter-mode': 'lowpass' });
     const leftSamples = new Float32Array(leftAnalyser.fftSize);
     const rightSamples = new Float32Array(rightAnalyser.fftSize);
     leftAnalyser.getFloatTimeDomainData(leftSamples);
