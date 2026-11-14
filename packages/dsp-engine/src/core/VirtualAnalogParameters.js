@@ -78,7 +78,7 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
     id: 'engine.virtual-analog.filter-mode',
     type: 'enum',
     defaultValue: 'off',
-    choices: ['off', 'lowpass', 'highpass', 'bandpass'],
+    choices: ['off', 'lowpass', 'highpass', 'bandpass', 'notch', 'allpass'],
   }),
   defineParameter({
     id: 'engine.virtual-analog.filter-cutoff',
