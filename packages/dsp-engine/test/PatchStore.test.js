@@ -216,3 +216,17 @@ test('Virtual Analog patches persist Unison stereo spread', () => {
   const restored = applyVirtualAnalogPatch(patch);
   assert.equal(restored['engine.virtual-analog.unison-spread'], 72);
 });
+
+
+test('Virtual Analog patches preserve all supported TPT filter modes through local storage', () => {
+  const storage = createStorage();
+  for (const mode of ['off', 'lowpass', 'highpass', 'bandpass', 'notch', 'allpass']) {
+    const patch = createVirtualAnalogPatch({
+      'engine.virtual-analog.filter-mode': mode,
+    }, `Filter ${mode}`);
+    savePatch(storage, patch);
+    const loaded = loadPatch(storage, patch.name);
+    const restored = applyVirtualAnalogPatch(loaded);
+    assert.equal(restored['engine.virtual-analog.filter-mode'], mode);
+  }
+});

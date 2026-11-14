@@ -60,7 +60,7 @@ try {
   await page.locator('#osc2-semitone').evaluate((input) => { input.value = '5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#osc2-fine').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="global"]').click();
-  await page.locator('#filter-mode').selectOption('lowpass');
+  await page.locator('#filter-mode').selectOption('notch');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '350'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-attack').evaluate((input) => { input.value = '125'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -143,7 +143,7 @@ try {
   await page.locator('[data-tab="waveform"]').click();
   await page.locator('[data-wave="sine"]').click();
   await page.locator('[data-tab="global"]').click();
-  await page.locator('#filter-mode').selectOption('highpass');
+  await page.locator('#filter-mode').selectOption('allpass');
   await page.locator('#filter-cutoff').evaluate((input) => { input.value = '800'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-resonance').evaluate((input) => { input.value = '100'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-attack').evaluate((input) => { input.value = '900'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -183,7 +183,9 @@ try {
   assert.equal(await page.locator('#unison-voices').inputValue(), '4');
   assert.equal(await page.locator('#unison-detune').inputValue(), '18.5');
   assert.equal(await page.locator('#unison-spread').inputValue(), '65');
-  assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
+  assert.equal(await page.locator('#filter-mode').inputValue(), 'notch');
+  await page.locator('#filter-mode').selectOption('allpass');
+  assert.equal(await page.locator('#filter-mode').inputValue(), 'allpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
   assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
   assert.equal(await page.locator('#filter-env-attack').inputValue(), '125');
