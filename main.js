@@ -425,6 +425,58 @@ document.querySelectorAll('[data-tab]').forEach((stage) => {
   });
 });
 
+// Fullscreen is scoped to the instrument shell. Browsers without the Fullscreen API
+// receive a reversible immersive fallback without claiming the browser chrome is hidden.
+const fullscreenRoot = document.querySelector('.app-shell');
+const fullscreenToggle = document.querySelector('#fullscreen-toggle');
+const isNativeFullscreen = () => document.fullscreenElement === fullscreenRoot
+  || document.webkitFullscreenElement === fullscreenRoot;
+const isImmersive = () => isNativeFullscreen() || fullscreenRoot.classList.contains('app-focus-mode');
+
+function syncFullscreenControl() {
+  const active = isImmersive();
+  fullscreenToggle.setAttribute('aria-pressed', String(active));
+  fullscreenToggle.setAttribute('aria-label', active ? 'Sair da tela cheia' : 'Ativar tela cheia');
+  fullscreenToggle.title = active ? 'Sair da tela cheia' : 'Ativar tela cheia';
+  fullscreenToggle.querySelector('.fullscreen-label').textContent = active ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+  fullscreenToggle.querySelector('.fullscreen-glyph').textContent = active ? '⛶' : '⛶';
+}
+
+fullscreenToggle.addEventListener('click', async () => {
+  if (isNativeFullscreen()) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) {
+      try { await exit.call(document); } catch { fullscreenRoot.classList.remove('app-focus-mode'); }
+    }
+  } else if (fullscreenRoot.classList.contains('app-focus-mode')) {
+    fullscreenRoot.classList.remove('app-focus-mode');
+  } else {
+    const request = fullscreenRoot.requestFullscreen || fullscreenRoot.webkitRequestFullscreen;
+    if (request) {
+      try {
+        await request.call(fullscreenRoot, { navigationUI: 'hide' });
+      } catch {
+        fullscreenRoot.classList.add('app-focus-mode');
+        message.textContent = 'Tela cheia do navegador indisponível; modo imersivo ativado.';
+      }
+    } else {
+      fullscreenRoot.classList.add('app-focus-mode');
+      message.textContent = 'Este navegador não oferece tela cheia nativa; modo imersivo ativado.';
+    }
+  }
+  syncFullscreenControl();
+});
+
+document.addEventListener('fullscreenchange', syncFullscreenControl);
+document.addEventListener('webkitfullscreenchange', syncFullscreenControl);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && fullscreenRoot.classList.contains('app-focus-mode')) {
+    fullscreenRoot.classList.remove('app-focus-mode');
+    syncFullscreenControl();
+  }
+});
+syncFullscreenControl();
+
 document.querySelectorAll('[data-wave]').forEach((button) => {
   button.addEventListener('click', () => setWaveform(button.dataset.wave));
 });

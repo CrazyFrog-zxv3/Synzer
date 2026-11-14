@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#10131a" />
   <meta name="description" content="SYNZER, instrumento de síntese sonora experimental para navegador." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <title>SYNZER · Virtual Analog Sound Workbench</title>
   <style>
     :root {
@@ -273,7 +274,13 @@
         <div class="brand-mark" aria-hidden="true">S</div>
         <div><p class="brand-name">SYNZER</p><p class="brand-sub">SOUND DESIGN WORKBENCH</p></div>
       </div>
-      <div id="state" class="top-status"><span class="status-dot"></span><span>ENGINE OFF</span></div>
+      <div class="topbar-actions">
+        <div id="state" class="top-status"><span class="status-dot"></span><span>ENGINE OFF</span></div>
+        <button id="fullscreen-toggle" class="fullscreen-toggle" type="button" aria-label="Ativar tela cheia" aria-pressed="false" title="Ativar tela cheia">
+          <span class="fullscreen-glyph" aria-hidden="true">⛶</span>
+          <span class="fullscreen-label">FULLSCREEN</span>
+        </button>
+      </div>
     </header>
 
     <section class="patch-strip" aria-label="Patch atual">

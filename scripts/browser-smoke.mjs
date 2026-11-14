@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
@@ -38,7 +38,36 @@ try {
   const harnessDetails = await page.locator('#details').textContent();
   assert.equal(harnessStatus, 'pass', `Browser audio harness failed: ${await page.locator('#status').textContent()}\n${harnessDetails}`);
 
+  await page.addInitScript(() => {
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: async function () {
+        Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: this });
+        document.dispatchEvent(new Event('fullscreenchange'));
+      },
+    });
+    Object.defineProperty(document, 'exitFullscreen', {
+      configurable: true,
+      value: async function () {
+        Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null });
+        document.dispatchEvent(new Event('fullscreenchange'));
+      },
+    });
+  });
   await page.goto(`${baseUrl}/index.html`);
+  await page.locator('#fullscreen-toggle').click();
+  assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-label'), 'Sair da tela cheia');
+  await page.locator('#fullscreen-toggle').click();
+  assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-pressed'), 'false');
+  await page.evaluate(() => {
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', { configurable: true, value: undefined });
+    Object.defineProperty(HTMLElement.prototype, 'webkitRequestFullscreen', { configurable: true, value: undefined });
+  });
+  await page.locator('#fullscreen-toggle').click();
+  assert.ok(await page.locator('.app-shell').evaluate((element) => element.classList.contains('app-focus-mode')));
+  await page.keyboard.press('Escape');
+  assert.ok(!(await page.locator('.app-shell').evaluate((element) => element.classList.contains('app-focus-mode'))));
   const firstKey = page.locator('#keyboard .key').first();
   await firstKey.scrollIntoViewIfNeeded();
   const keyBox = await firstKey.boundingBox();
@@ -254,16 +283,25 @@ try {
 
   assert.deepEqual(pageErrors, [], `Browser page errors: ${pageErrors.join('; ')}`);
 
+  await page.locator('[data-tab=\"waveform\"]').click();
   const viewportResults = [];
-  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape' }]) {
+  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape-compact' }, { width: 844, height: 390, mode: 'landscape-phone' }]) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const dimensions = await page.evaluate(() => ({
       viewportWidth: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       appWidth: Math.round(document.querySelector('.app-shell').getBoundingClientRect().width),
+      railColumns: getComputedStyle(document.querySelector('.module-rail')).gridTemplateColumns,
+      moduleColumns: getComputedStyle(document.querySelector('#view-waveform .module-grid')).gridTemplateColumns,
+      fullscreenHeight: Math.round(document.querySelector('#fullscreen-toggle').getBoundingClientRect().height),
     }));
     assert.ok(dimensions.documentWidth <= dimensions.viewportWidth + 1,
       `Horizontal overflow in ${viewport.mode}: ${JSON.stringify(dimensions)}`);
+    assert.ok(dimensions.fullscreenHeight >= 48, `Fullscreen touch target too small in ${viewport.mode}`);
+    if (viewport.mode === 'landscape-phone') {
+      assert.equal(dimensions.railColumns.split(' ').length, 6, `Landscape navigation must be a single six-stage row: ${JSON.stringify(dimensions)}`);
+      assert.equal(dimensions.moduleColumns.split(' ').length, 2, `Landscape modules must be paired: ${JSON.stringify(dimensions)}`);
+    }
     viewportResults.push({ ...viewport, ...dimensions, horizontalOverflow: false });
   }
 
@@ -377,8 +415,9 @@ try {
   assert.equal(await fmUiPage.locator('#fm-algorithm').inputValue(), '3');
   assert.equal(await fmUiPage.locator('#fm-op2-index').inputValue(), '8.5');
   assert.equal(await fmUiPage.locator('#fm-feedback').inputValue(), '15');
+  await fmUiPage.locator('[data-tab=\"waveform\"]').click();
   const fmViewports = [];
-  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape' }]) {
+  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape-compact' }, { width: 844, height: 390, mode: 'landscape-phone' }]) {
     await fmUiPage.setViewportSize({ width: viewport.width, height: viewport.height });
     const geometry = await fmUiPage.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     assert.ok(geometry.document <= geometry.viewport + 1, `FM horizontal overflow: ${JSON.stringify(geometry)}`);
@@ -402,7 +441,9 @@ try {
       'FM 4 operadores iniciou no AudioWorklet pelo teclado',
       'Algoritmos, feedback, ratio, index e envelopes FM responderam aos controles',
       'Patch FM foi salvo, alterado e restaurado com engineId e parâmetros preservados',
-      'Painel FM sem overflow horizontal em 360×800 e 800×360',
+      'Fullscreen nativo entrou/saiu corretamente e fallback imersivo saiu pelo Escape',
+      'Paisagem 844×390 usa seis etapas em faixa horizontal, módulos em duas colunas e alvos de toque de 48 px',
+      'Painel FM sem overflow horizontal em retrato e paisagem',
       'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, Unison 4-lane com spread estéreo L/R medido, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
