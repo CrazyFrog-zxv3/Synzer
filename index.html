@@ -346,6 +346,7 @@
                 <select id="osc1-source" aria-label="OSC 01 source" style="width:100%;min-height:44px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
                   <option value="virtual-analog">VIRTUAL ANALOG · POLYBLEP</option>
                   <option value="wavetable">WAVETABLE · MIP-MAPPED</option>
+                  <option value="fm">FM · 4 OPERATORS</option>
                 </select>
               </div>
               <div id="analog-wave-picks" class="wave-picks" aria-label="Selecionar forma de onda">
@@ -362,6 +363,7 @@
                 <input id="wavetable-morph" type="range" min="0" max="100" step="1" value="0" aria-label="Wavetable morph" />
                 <p class="control-hint">Morph entre três frames harmônicos. A troca de mip acompanha o pitch e cruza níveis sem salto abrupto.</p>
               </div>
+
               <div class="spec-list">
                 <div class="spec-row"><span>ENGINE</span><strong id="osc1-engine-readout">VIRTUAL ANALOG</strong></div>
                 <div class="spec-row"><span>ANTI-ALIAS</span><strong id="osc1-alias-readout">POLYBLEP</strong></div>
@@ -369,6 +371,55 @@
               </div>
             </article>
           </div>
+          <section id="fm-controls" class="fm-rack" hidden aria-label="Painel de síntese FM de quatro operadores">
+                <div class="fm-rack-head">
+                  <div><p class="eyebrow">PHASE MODULATION CORE</p><h3>FOUR OPERATOR MATRIX</h3><p>Quatro osciladores senoidais com roteamento algorítmico e envelopes independentes.</p></div>
+                  <span class="fm-chip">FM / PM</span>
+                </div>
+                <div class="fm-global-controls">
+                  <div class="control"><div class="control-top"><label for="fm-algorithm">ROUTING ALGORITHM</label><output id="fm-algorithm-value">01</output></div><select id="fm-algorithm" aria-label="Algoritmo de roteamento FM"><option value="1">01 · SERIAL CHAIN</option><option value="2">02 · DUAL PAIR</option><option value="3">03 · MULTI MOD</option><option value="4">04 · FOUR CARRIERS</option></select><p class="control-hint">Define quais operadores modulam os demais e quais chegam à saída.</p></div>
+                  <div class="control"><div class="control-top"><label for="fm-feedback">OP 04 FEEDBACK</label><output id="fm-feedback-value">0%</output></div><input id="fm-feedback" type="range" min="0" max="100" value="0"/><p class="control-hint">Realimentação de uma amostra no operador 04.</p></div>
+                </div>
+                <div class="fm-operator-grid">
+                  <article class="fm-operator" data-operator="1"><header><b>OP 01</b><span class="fm-role">CARRIER A</span></header><div class="fm-operator-controls">
+                    <div class="control"><div class="control-top"><label for="fm-op1-ratio">RATIO</label><output id="fm-op1-ratio-value">1.00×</output></div><input id="fm-op1-ratio" type="range" min="0.0625" max="16" step="0.0625" value="1"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-level">LEVEL</label><output id="fm-op1-level-value">80%</output></div><input id="fm-op1-level" type="range" min="0" max="100" value="80"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-index">INDEX</label><output id="fm-op1-index-value">0.0</output></div><input id="fm-op1-index" type="range" min="0" max="16" step="0.1" value="0"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-attack">ATTACK</label><output id="fm-op1-attack-value">5 ms</output></div><input id="fm-op1-attack" type="range" min="0" max="3000" value="5"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-decay">DECAY</label><output id="fm-op1-decay-value">150 ms</output></div><input id="fm-op1-decay" type="range" min="0" max="3000" value="150"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-sustain">SUSTAIN</label><output id="fm-op1-sustain-value">85%</output></div><input id="fm-op1-sustain" type="range" min="0" max="100" value="85"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op1-release">RELEASE</label><output id="fm-op1-release-value">220 ms</output></div><input id="fm-op1-release" type="range" min="0" max="5000" value="220"/></div>
+                  </div></article>
+                  <article class="fm-operator" data-operator="2"><header><b>OP 02</b><span class="fm-role">MODULATOR</span></header><div class="fm-operator-controls">
+                    <div class="control"><div class="control-top"><label for="fm-op2-ratio">RATIO</label><output id="fm-op2-ratio-value">1.00×</output></div><input id="fm-op2-ratio" type="range" min="0.0625" max="16" step="0.0625" value="1"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-level">LEVEL</label><output id="fm-op2-level-value">70%</output></div><input id="fm-op2-level" type="range" min="0" max="100" value="70"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-index">INDEX</label><output id="fm-op2-index-value">2.5</output></div><input id="fm-op2-index" type="range" min="0" max="16" step="0.1" value="2.5"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-attack">ATTACK</label><output id="fm-op2-attack-value">2 ms</output></div><input id="fm-op2-attack" type="range" min="0" max="3000" value="2"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-decay">DECAY</label><output id="fm-op2-decay-value">150 ms</output></div><input id="fm-op2-decay" type="range" min="0" max="3000" value="150"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-sustain">SUSTAIN</label><output id="fm-op2-sustain-value">65%</output></div><input id="fm-op2-sustain" type="range" min="0" max="100" value="65"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op2-release">RELEASE</label><output id="fm-op2-release-value">220 ms</output></div><input id="fm-op2-release" type="range" min="0" max="5000" value="220"/></div>
+                  </div></article>
+                  <article class="fm-operator" data-operator="3"><header><b>OP 03</b><span class="fm-role">MODULATOR</span></header><div class="fm-operator-controls">
+                    <div class="control"><div class="control-top"><label for="fm-op3-ratio">RATIO</label><output id="fm-op3-ratio-value">1.00×</output></div><input id="fm-op3-ratio" type="range" min="0.0625" max="16" step="0.0625" value="1"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-level">LEVEL</label><output id="fm-op3-level-value">70%</output></div><input id="fm-op3-level" type="range" min="0" max="100" value="70"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-index">INDEX</label><output id="fm-op3-index-value">2.5</output></div><input id="fm-op3-index" type="range" min="0" max="16" step="0.1" value="2.5"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-attack">ATTACK</label><output id="fm-op3-attack-value">2 ms</output></div><input id="fm-op3-attack" type="range" min="0" max="3000" value="2"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-decay">DECAY</label><output id="fm-op3-decay-value">150 ms</output></div><input id="fm-op3-decay" type="range" min="0" max="3000" value="150"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-sustain">SUSTAIN</label><output id="fm-op3-sustain-value">65%</output></div><input id="fm-op3-sustain" type="range" min="0" max="100" value="65"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op3-release">RELEASE</label><output id="fm-op3-release-value">220 ms</output></div><input id="fm-op3-release" type="range" min="0" max="5000" value="220"/></div>
+                  </div></article>
+                  <article class="fm-operator" data-operator="4"><header><b>OP 04</b><span class="fm-role">MOD / FEEDBACK</span></header><div class="fm-operator-controls">
+                    <div class="control"><div class="control-top"><label for="fm-op4-ratio">RATIO</label><output id="fm-op4-ratio-value">1.00×</output></div><input id="fm-op4-ratio" type="range" min="0.0625" max="16" step="0.0625" value="1"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-level">LEVEL</label><output id="fm-op4-level-value">70%</output></div><input id="fm-op4-level" type="range" min="0" max="100" value="70"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-index">INDEX</label><output id="fm-op4-index-value">2.5</output></div><input id="fm-op4-index" type="range" min="0" max="16" step="0.1" value="2.5"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-attack">ATTACK</label><output id="fm-op4-attack-value">2 ms</output></div><input id="fm-op4-attack" type="range" min="0" max="3000" value="2"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-decay">DECAY</label><output id="fm-op4-decay-value">150 ms</output></div><input id="fm-op4-decay" type="range" min="0" max="3000" value="150"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-sustain">SUSTAIN</label><output id="fm-op4-sustain-value">65%</output></div><input id="fm-op4-sustain" type="range" min="0" max="100" value="65"/></div>
+                    <div class="control"><div class="control-top"><label for="fm-op4-release">RELEASE</label><output id="fm-op4-release-value">220 ms</output></div><input id="fm-op4-release" type="range" min="0" max="5000" value="220"/></div>
+                  </div></article>
+                </div>
+                <p class="control-hint fm-footnote">RATIO define a frequência relativa; INDEX controla a profundidade de modulação; LEVEL regula a contribuição do operador. ADSR por operador permite esculpir o espectro ao longo da nota. Algoritmos são roteamentos reais, não presets visuais.</p>
+          </section>
           <div class="module" style="margin-top:12px">
             <div class="module-head"><div><h3 class="module-title">OSC 02 · SECONDARY OSCILLATOR</h3><p class="module-subtitle">Segunda fonte por voz · afinação independente</p></div><span class="module-tag">DUAL OSC</span></div>
             <label class="route-enable" for="osc2-enabled"><span>OSCILLATOR 02 ENABLED</span><input id="osc2-enabled" type="checkbox"/></label>
@@ -676,10 +727,10 @@
     <section class="metrics" aria-label="Diagnóstico do motor">
       <div class="metric"><span>HELD KEYS</span><strong id="voice-count">0</strong></div>
       <div class="metric"><span>AUDIO ENGINE</span><strong id="worklet-state">NOT INITIALIZED</strong></div>
-      <div class="metric"><span>DSP</span><strong>POLYBLEP / WHITE-PINK NOISE / UNISON / 3 ADSR / TPT / LFO</strong></div>
+      <div class="metric"><span>DSP</span><strong>VA / WAVETABLE / FM 4-OP / NOISE / UNISON / MOD MATRIX / TPT</strong></div>
     </section>
     <p id="message" role="status" aria-live="polite">Pronto. O áudio é inicializado no primeiro toque.</p>
-    <footer class="footer">SYNZER · SYNTHESIS WORKBENCH 0.3 · Implementado: Virtual Analog, OSC 01 Wavetable com morph, dois osciladores VA, Sub, Noise, Unison, até 12 vozes, três envelopes por voz, LFO 01, matriz de modulação, filtro TPT multimodo e patches locais. Engines independentes FM/granular e rack avançado de efeitos continuam em desenvolvimento.</footer>
+    <footer class="footer">SYNZER · SYNTHESIS WORKBENCH 0.3 · Implementado: Virtual Analog, OSC 01 Wavetable com morph, dois osciladores VA, Sub, Noise, Unison, até 12 vozes, três envelopes por voz, LFO 01, matriz de modulação, filtro TPT multimodo e patches locais. FM/PM de quatro operadores com quatro algoritmos e envelopes por operador está implementado; engines granular, aditiva, sample, spectral e modelagem física continuam planejadas.</footer>
   </main>
   <script type="module" src="./main.js"></script>
 </body>

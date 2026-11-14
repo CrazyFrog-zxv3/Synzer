@@ -25,3 +25,12 @@ test('patch UI restores the selected oscillator source and morph amount', () => 
   assert.match(main, /osc1Source\.value\s*=\s*parameters\['engine\.virtual-analog\.osc-source'\]/);
   assert.match(main, /wavetableMorph\.value\s*=\s*String\(Math\.round\(parameters\['engine\.virtual-analog\.wavetable-morph'\]/);
 });
+
+test('SOURCE BANK exposes a real FM engine selector and four-operator controls', () => {
+  assert.match(html, /option value="fm"/);
+  for (const id of ['fm-algorithm', 'fm-op1-ratio', 'fm-op1-level', 'fm-op1-index', 'fm-op4-ratio', 'fm-op4-level', 'fm-op4-index']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(main, /setFMParameters/);
+  assert.match(main, /setEngine\(/);
+});

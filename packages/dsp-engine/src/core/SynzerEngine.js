@@ -1,10 +1,12 @@
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
 
 export class SynzerEngine {
-  constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, onError = null } = {}) {
+  constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, engineId = 'virtual-analog', onError = null } = {}) {
     this.audioContextFactory = audioContextFactory;
     this.workletUrl = workletUrl;
     this.maxVoices = maxVoices;
+    this.engineId = engineId;
+    this.fmParameters = { 'global.master-level': 0.8, 'engine.fm.algorithm': 1, 'engine.fm.feedback': 0, ...Object.fromEntries([1, 2, 3, 4].flatMap((op) => [[`engine.fm.op${op}-ratio`, 1], [`engine.fm.op${op}-level`, op === 1 ? 0.8 : 0.7], [`engine.fm.op${op}-index`, op === 1 ? 0 : 2.5], [`engine.fm.op${op}-attack`, 0.005], [`engine.fm.op${op}-decay`, 0.15], [`engine.fm.op${op}-sustain`, 0.8], [`engine.fm.op${op}-release`, 0.22]])) };
     if (onError !== null && typeof onError !== 'function') throw new TypeError('onError must be a function when provided.');
     this.onError = onError;
     this.context = null;
@@ -67,7 +69,7 @@ export class SynzerEngine {
       assertCurrent();
       const node = new AudioWorkletNode(context, 'synzer-audio-processor', {
         numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-        processorOptions: { maxVoices: this.maxVoices },
+        processorOptions: { maxVoices: this.maxVoices, engineId: this.engineId },
       });
       node.port.onmessage = ({ data }) => {
         if (data?.type !== 'ENGINE_ERROR') return;
@@ -100,7 +102,7 @@ export class SynzerEngine {
         node.connect(context.destination);
         assertCurrent();
         this.processorFailure = null;
-        node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.parameters });
+        node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.engineId === 'fm' ? this.fmParameters : this.parameters });
         this.node = node;
       } catch (error) {
         node.disconnect();
@@ -118,6 +120,24 @@ export class SynzerEngine {
 
   getParameters() {
     return { ...this.parameters };
+  }
+
+  setEngine(engineId) {
+    if (!['virtual-analog', 'wavetable', 'fm'].includes(engineId)) throw new RangeError(`Unsupported synthesis engine: ${engineId}`);
+    if (engineId === 'wavetable') engineId = 'virtual-analog';
+    this.engineId = engineId;
+    if (this.node && !this.processorFailure) {
+      this.node.port.postMessage({ type: 'SET_ENGINE', engineId });
+      this.node.port.postMessage({ type: 'SET_PARAMETERS', parameters: engineId === 'fm' ? this.fmParameters : this.parameters });
+    }
+    return this.engineId;
+  }
+
+  setFMParameters(values = {}) {
+    if (!values || typeof values !== 'object' || Array.isArray(values)) throw new TypeError('FM parameters must be an object.');
+    this.fmParameters = { ...this.fmParameters, ...values };
+    if (this.engineId === 'fm' && this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.fmParameters });
+    return { ...this.fmParameters };
   }
 
   setParameters(values = {}) {

@@ -1,5 +1,6 @@
 import { createPatch, validatePatch, serializePatch, deserializePatch } from './PatchSchema.js';
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+import { createDefaultFMParameters } from './FMVoiceEngine.js';
 
 export const PATCH_STORAGE_KEY = 'synzer.patches.v1';
 
@@ -57,6 +58,26 @@ export function applyVirtualAnalogPatch(input) {
     ...patch.globalParameters,
     ...patch.engineSlots[0].parameters,
   });
+}
+
+
+export function createFMEnginePatch(parameters = {}, name = 'FM Init') {
+  const normalized = { ...createDefaultFMParameters(), ...parameters };
+  const globalParameters = {};
+  const engineParameters = {};
+  for (const [id, value] of Object.entries(normalized)) {
+    if (id.startsWith('global.')) globalParameters[id] = value;
+    else if (id.startsWith('engine.fm.')) engineParameters[id] = value;
+  }
+  return createPatch({ name, globalParameters, engineSlots: [{ slotId: 'layer-fm', engineId: 'fm', enabled: true, parameters: engineParameters }] });
+}
+
+export function applyFMEnginePatch(input) {
+  const patch = validatePatch(input);
+  if (patch.engineSlots.length !== 1 || patch.engineSlots[0].engineId !== 'fm' || patch.engineSlots[0].enabled !== true) {
+    throw new Error('This runtime currently supports patches with one enabled FM engine slot only.');
+  }
+  return { ...createDefaultFMParameters(), ...patch.globalParameters, ...patch.engineSlots[0].parameters };
 }
 
 export function savePatch(storage, input) {

@@ -316,6 +316,76 @@ try {
   assert.equal(await wavetableUiPage.locator('#wavetable-morph').inputValue(), '65');
   assert.deepEqual(wavetableUiErrors, [], `Wavetable UI page errors: ${wavetableUiErrors.join('; ')}`);
 
+  const fmUiPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const fmUiErrors = [];
+  fmUiPage.on('pageerror', (error) => fmUiErrors.push(error.message));
+  await fmUiPage.addInitScript(() => {
+    const connect = AudioWorkletNode.prototype.connect;
+    AudioWorkletNode.prototype.connect = function(destination, ...args) {
+      const result = connect.call(this, destination, ...args);
+      if (destination === this.context.destination && !window.__synzerFMAnalyser) {
+        const analyser = this.context.createAnalyser();
+        analyser.fftSize = 2048;
+        connect.call(this, analyser);
+        window.__synzerFMAnalyser = analyser;
+      }
+      return result;
+    };
+  });
+  await fmUiPage.goto(`${baseUrl}/index.html`);
+  await fmUiPage.locator('#osc1-source').selectOption('fm');
+  await fmUiPage.locator('#fm-controls').waitFor({ state: 'visible' });
+  await fmUiPage.locator('#fm-algorithm').scrollIntoViewIfNeeded();
+  await fmUiPage.locator('#fm-algorithm').selectOption('3');
+  await fmUiPage.locator('#fm-feedback').evaluate((input) => { input.value = '15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await fmUiPage.locator('#fm-op2-ratio').evaluate((input) => { input.value = '2.5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await fmUiPage.locator('#fm-op2-index').evaluate((input) => { input.value = '8.5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await fmUiPage.locator('#fm-op1-attack').evaluate((input) => { input.value = '0'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  const fmKey = fmUiPage.locator('.key.white').first();
+  await fmKey.scrollIntoViewIfNeeded();
+  await fmKey.hover();
+  await fmUiPage.mouse.down();
+  await fmUiPage.getByText(/Nota MIDI 60 ativa · FM \/ 4 OP/).waitFor({ timeout: 12000 });
+  assert.match(await fmUiPage.locator('#state').textContent(), /ENGINE READY/);
+  await fmUiPage.waitForTimeout(120);
+  const fmMeasuredRms = await fmUiPage.evaluate(() => {
+    const analyser = window.__synzerFMAnalyser;
+    if (!analyser) return 0;
+    const data = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(data);
+    return Math.sqrt(data.reduce((sum, sample) => sum + sample * sample, 0) / data.length);
+  });
+  assert.ok(fmMeasuredRms > 1e-5, `FM output did not reach the Chromium analyser: ${fmMeasuredRms}`);
+  await fmUiPage.mouse.up();
+  await fmUiPage.locator('#patch-name').fill('FM Four Op');
+  await fmUiPage.locator('#save-patch').click();
+  await fmUiPage.getByText(/Patch \"FM Four Op\" salvo localmente/).waitFor({ timeout: 5000 });
+  const savedFMPatch = await fmUiPage.evaluate(() => {
+    const patches = JSON.parse(localStorage.getItem('synzer.patches.v1') ?? '[]');
+    return patches.find((patch) => patch.name === 'FM Four Op');
+  });
+  assert.equal(savedFMPatch.engineSlots[0].engineId, 'fm');
+  assert.equal(savedFMPatch.engineSlots[0].parameters['engine.fm.algorithm'], 3);
+  assert.equal(savedFMPatch.engineSlots[0].parameters['engine.fm.op2-index'], 8.5);
+  await fmUiPage.locator('#fm-algorithm').scrollIntoViewIfNeeded();
+  await fmUiPage.locator('#fm-algorithm').selectOption('1');
+  await fmUiPage.locator('#fm-op2-index').evaluate((input) => { input.value = '1'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await fmUiPage.locator('#osc1-source').selectOption('virtual-analog');
+  await fmUiPage.locator('#patch-select').selectOption('FM Four Op');
+  await fmUiPage.locator('#load-patch').click();
+  assert.equal(await fmUiPage.locator('#osc1-source').inputValue(), 'fm');
+  assert.equal(await fmUiPage.locator('#fm-algorithm').inputValue(), '3');
+  assert.equal(await fmUiPage.locator('#fm-op2-index').inputValue(), '8.5');
+  assert.equal(await fmUiPage.locator('#fm-feedback').inputValue(), '15');
+  const fmViewports = [];
+  for (const viewport of [{ width: 360, height: 800, mode: 'portrait' }, { width: 800, height: 360, mode: 'landscape' }]) {
+    await fmUiPage.setViewportSize({ width: viewport.width, height: viewport.height });
+    const geometry = await fmUiPage.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    assert.ok(geometry.document <= geometry.viewport + 1, `FM horizontal overflow: ${JSON.stringify(geometry)}`);
+    fmViewports.push({ ...viewport, ...geometry });
+  }
+  assert.deepEqual(fmUiErrors, [], `FM UI page errors: ${fmUiErrors.join('; ')}`);
+
   process.stdout.write(JSON.stringify({
     status: 'PASS',
     checks: [
@@ -329,6 +399,10 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
+      'FM 4 operadores iniciou no AudioWorklet pelo teclado',
+      'Algoritmos, feedback, ratio, index e envelopes FM responderam aos controles',
+      'Patch FM foi salvo, alterado e restaurado com engineId e parâmetros preservados',
+      'Painel FM sem overflow horizontal em 360×800 e 800×360',
       'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, Unison 4-lane com spread estéreo L/R medido, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
@@ -336,6 +410,8 @@ try {
     wavetablePageErrors,
     wavetableUi: { savedPatchSource: savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.osc-source'], savedMorph: savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.wavetable-morph'], restoredSource: await wavetableUiPage.locator('#osc1-source').inputValue(), restoredMorph: await wavetableUiPage.locator('#wavetable-morph').inputValue() },
     wavetableUiErrors,
+    fmUi: { savedEngine: savedFMPatch.engineSlots[0].engineId, algorithm: savedFMPatch.engineSlots[0].parameters['engine.fm.algorithm'], op2Index: savedFMPatch.engineSlots[0].parameters['engine.fm.op2-index'], measuredRms: fmMeasuredRms, restoredEngine: await fmUiPage.locator('#osc1-source').inputValue(), restoredAlgorithm: await fmUiPage.locator('#fm-algorithm').inputValue(), restoredOp2Index: await fmUiPage.locator('#fm-op2-index').inputValue(), responsive: fmViewports },
+    fmUiErrors,
     responsiveViewports: viewportResults,
     pageErrors,
   }, null, 2) + '\n');

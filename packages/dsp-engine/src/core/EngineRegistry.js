@@ -1,9 +1,10 @@
 import { VoiceEngine } from './VoiceEngine.js';
+import { FMVoiceEngine } from './FMVoiceEngine.js';
 
 const FAMILY_DEFINITIONS = [
   { id: 'virtual-analog', label: 'Virtual Analog', status: 'available', description: 'Subtractive synthesis with oscillators and envelopes.' },
   { id: 'wavetable', label: 'Wavetable', status: 'planned', description: 'Table scanning and spectral frame interpolation.' },
-  { id: 'fm', label: 'FM / Phase Modulation', status: 'planned', description: 'Operator-based frequency and phase modulation.' },
+  { id: 'fm', label: 'FM / Phase Modulation', status: 'available', description: 'Four-operator frequency and phase modulation.' },
   { id: 'additive', label: 'Additive', status: 'planned', description: 'Harmonic partial synthesis.' },
   { id: 'sample', label: 'Sample / Multisample', status: 'planned', description: 'Playback and mapping of recorded audio.' },
   { id: 'granular', label: 'Granular', status: 'planned', description: 'Grain-based playback and texture generation.' },
@@ -68,6 +69,11 @@ export function createDefaultEngineRegistry() {
     id: 'virtual-analog',
     label: 'Virtual Analog',
     create: (options) => new VoiceEngine(options),
+  });
+  registry.register({
+    id: 'fm',
+    label: 'FM / Phase Modulation',
+    create: (options) => new FMVoiceEngine(options),
   });
   return registry;
 }

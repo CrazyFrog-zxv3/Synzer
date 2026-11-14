@@ -4,7 +4,7 @@ import { EngineRegistry, SYNTHESIS_FAMILIES } from '../src/core/EngineRegistry.j
 
 test('catalog identifies the current Virtual Analog engine and keeps future families planned', () => {
   assert.equal(SYNTHESIS_FAMILIES.find((item) => item.id === 'virtual-analog').status, 'available');
-  for (const id of ['wavetable', 'fm', 'additive', 'sample', 'granular', 'spectral', 'physical-modeling']) {
+  for (const id of ['wavetable', 'additive', 'sample', 'granular', 'spectral', 'physical-modeling']) {
     assert.equal(SYNTHESIS_FAMILIES.find((item) => item.id === id).status, 'planned');
   }
 });
@@ -45,4 +45,12 @@ test('default registry constructs the existing Virtual Analog engine', async () 
   assert.equal(engine.sampleRate, 48000);
   assert.equal(engine.maxVoices, 4);
   assert.equal(registry.has('virtual-analog'), true);
+});
+
+test('default registry exposes the functional four-operator FM engine', async () => {
+  const { createDefaultEngineRegistry } = await import('../src/core/EngineRegistry.js');
+  const registry = createDefaultEngineRegistry();
+  assert.equal(registry.has('fm'), true);
+  assert.equal(registry.create('fm', { sampleRate: 48000 }).constructor.name, 'FMVoiceEngine');
+  assert.equal(SYNTHESIS_FAMILIES.find((item) => item.id === 'fm').status, 'available');
 });

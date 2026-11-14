@@ -128,3 +128,36 @@ test('AudioWorklet renders a Wavetable voice and applies live morph updates', ()
   assert.equal(processor.engine.getVoice('worklet-wavetable').wavetable.morph, 1);
   assert.equal(processorErrors.length, 0);
 });
+
+
+test('AudioWorklet instantiates and renders the four-operator FM engine', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: { engineId: 'fm', maxVoices: 4 } });
+  processor.port.onmessage({ data: { type: 'SET_PARAMETERS', parameters: {
+    'global.master-level': 0.7, 'engine.fm.algorithm': 2,
+    'engine.fm.op1-attack': 0, 'engine.fm.op1-decay': 0, 'engine.fm.op1-sustain': 1,
+    'engine.fm.op2-ratio': 2, 'engine.fm.op2-index': 6,
+  } } });
+  processor.port.onmessage({ data: { type: 'NOTE_ON', voice: { id: 'fm-worklet', note: 69, frequency: 440, velocity: 0.9 } } });
+  const left = new Float32Array(512);
+  const right = new Float32Array(512);
+  processor.process([], [[left, right]]);
+  assert.ok(left.some((sample) => Math.abs(sample) > 1e-5));
+  assert.deepEqual(right, left);
+  assert.ok([...left, ...right].every(Number.isFinite));
+  assert.equal(processor.engineId, 'fm');
+  assert.equal(processorErrors.length, 0);
+});
+
+test('AudioWorklet can switch from Virtual Analog to FM without rebuilding the node', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: { maxVoices: 4 } });
+  processor.port.onmessage({ data: { type: 'SET_ENGINE', engineId: 'fm' } });
+  processor.port.onmessage({ data: { type: 'SET_PARAMETERS', parameters: { 'engine.fm.algorithm': 4, 'engine.fm.op1-level': 1 } } });
+  processor.port.onmessage({ data: { type: 'NOTE_ON', voice: { id: 'fm-switch', note: 60, frequency: 261.6256, velocity: 1 } } });
+  const left = new Float32Array(256);
+  processor.process([], [[left]]);
+  assert.ok(left.some((sample) => Math.abs(sample) > 1e-5));
+  assert.equal(processor.engineId, 'fm');
+  assert.equal(processorErrors.length, 0);
+});

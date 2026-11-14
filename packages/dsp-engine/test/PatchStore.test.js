@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   createVirtualAnalogPatch,
   applyVirtualAnalogPatch,
+  createFMEnginePatch,
+  applyFMEnginePatch,
   savePatch,
   listPatches,
   loadPatch,
@@ -248,4 +250,29 @@ test('legacy patches without OSC source metadata retain the Virtual Analog defau
   const restored = applyVirtualAnalogPatch(legacy);
   assert.equal(restored['engine.virtual-analog.osc-source'], 'virtual-analog');
   assert.equal(restored['engine.virtual-analog.wavetable-morph'], 0);
+});
+
+
+test('FM patches preserve all four operator parameters and survive local storage round-trip', () => {
+  const storage = createStorage();
+  const patch = createFMEnginePatch({
+    'global.master-level': 0.55,
+    'engine.fm.algorithm': 3,
+    'engine.fm.feedback': 0.35,
+    'engine.fm.op1-ratio': 1.5,
+    'engine.fm.op1-level': 0.9,
+    'engine.fm.op2-index': 8.5,
+    'engine.fm.op3-attack': 0.12,
+    'engine.fm.op4-release': 1.25,
+  }, 'Glass FM');
+  savePatch(storage, patch);
+  const restored = applyFMEnginePatch(loadPatch(storage, 'Glass FM'));
+  assert.equal(restored['global.master-level'], 0.55);
+  assert.equal(restored['engine.fm.algorithm'], 3);
+  assert.equal(restored['engine.fm.feedback'], 0.35);
+  assert.equal(restored['engine.fm.op1-ratio'], 1.5);
+  assert.equal(restored['engine.fm.op1-level'], 0.9);
+  assert.equal(restored['engine.fm.op2-index'], 8.5);
+  assert.equal(restored['engine.fm.op3-attack'], 0.12);
+  assert.equal(restored['engine.fm.op4-release'], 1.25);
 });

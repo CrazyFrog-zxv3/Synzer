@@ -3,6 +3,8 @@ import { createDefaultWavetableDefinition } from './packages/dsp-engine/src/core
 import {
   createVirtualAnalogPatch,
   applyVirtualAnalogPatch,
+  createFMEnginePatch,
+  applyFMEnginePatch,
   savePatch,
   listPatches,
   loadPatch,
@@ -93,6 +95,44 @@ function readWavetableMorph() {
   return Number(document.querySelector('#wavetable-morph').value) / 100;
 }
 
+function readFMParameters() {
+  const parameters = {
+    'global.master-level': Number(document.querySelector('#master-level').value) / 100,
+    'engine.fm.algorithm': Number(document.querySelector('#fm-algorithm').value),
+    'engine.fm.feedback': Number(document.querySelector('#fm-feedback').value) / 100,
+  };
+  for (let op = 1; op <= 4; op++) {
+    parameters[`engine.fm.op${op}-ratio`] = Number(document.querySelector(`#fm-op${op}-ratio`).value);
+    parameters[`engine.fm.op${op}-level`] = Number(document.querySelector(`#fm-op${op}-level`).value) / 100;
+    parameters[`engine.fm.op${op}-index`] = Number(document.querySelector(`#fm-op${op}-index`).value);
+    parameters[`engine.fm.op${op}-attack`] = Number(document.querySelector(`#fm-op${op}-attack`).value) / 1000;
+    parameters[`engine.fm.op${op}-decay`] = Number(document.querySelector(`#fm-op${op}-decay`).value) / 1000;
+    parameters[`engine.fm.op${op}-sustain`] = Number(document.querySelector(`#fm-op${op}-sustain`).value) / 100;
+    parameters[`engine.fm.op${op}-release`] = Number(document.querySelector(`#fm-op${op}-release`).value) / 1000;
+  }
+  return parameters;
+}
+
+function syncFMControls(parameters = readFMParameters()) {
+  document.querySelector('#fm-algorithm').value = String(parameters['engine.fm.algorithm']);
+  document.querySelector('#fm-algorithm-value').textContent = String(parameters['engine.fm.algorithm']).padStart(2, '0');
+  document.querySelector('#fm-feedback').value = String(Math.round(parameters['engine.fm.feedback'] * 100));
+  document.querySelector('#fm-feedback-value').textContent = `${Math.round(parameters['engine.fm.feedback'] * 100)}%`;
+  for (let op = 1; op <= 4; op++) {
+    for (const [name, factor, unit, digits] of [
+      ['ratio', 1, '×', 2], ['level', 100, '%', 0], ['index', 1, '', 1],
+      ['attack', 1000, ' ms', 0], ['decay', 1000, ' ms', 0], ['sustain', 100, '%', 0], ['release', 1000, ' ms', 0],
+    ]) {
+      const input = document.querySelector(`#fm-op${op}-${name}`);
+      const output = document.querySelector(`#fm-op${op}-${name}-value`);
+      const value = parameters[`engine.fm.op${op}-${name}`];
+      input.value = String(value * factor);
+      output.value = `${Number(value).toFixed(digits)}${unit}`;
+      output.textContent = output.value;
+    }
+  }
+}
+
 function readSynthParameters() {
   return {
     'global.master-level': Number(document.querySelector('#master-level').value) / 100,
@@ -159,7 +199,8 @@ function readSynthParameters() {
 
 function applySynthParameters() {
   try {
-    engine.setParameters(readSynthParameters());
+    if (readOscillatorSource() === 'fm') engine.setFMParameters(readFMParameters());
+    else engine.setParameters(readSynthParameters());
   } catch (error) {
     message.textContent = `Parâmetros rejeitados: ${error.message}`;
   }
@@ -173,12 +214,15 @@ function updateWavetableMorphReadout() {
 }
 
 function updateOscillatorSourceUI() {
-  const wavetable = readOscillatorSource() === 'wavetable';
-  document.querySelector('#analog-wave-picks').hidden = wavetable;
+  const source = readOscillatorSource();
+  const wavetable = source === 'wavetable';
+  const fm = source === 'fm';
+  document.querySelector('#analog-wave-picks').hidden = wavetable || fm;
   document.querySelector('#wavetable-controls').hidden = !wavetable;
-  document.querySelector('#osc1-source-state').textContent = wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
-  document.querySelector('#osc1-engine-readout').textContent = wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
-  document.querySelector('#osc1-alias-readout').textContent = wavetable ? 'BAND-LIMITED MIPS' : 'POLYBLEP';
+  document.querySelector('#fm-controls').hidden = !fm;
+  document.querySelector('#osc1-source-state').textContent = fm ? 'FOUR-OP FM' : wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
+  document.querySelector('#osc1-engine-readout').textContent = fm ? 'FM / PHASE MODULATION' : wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
+  document.querySelector('#osc1-alias-readout').textContent = fm ? 'SINE OPERATOR BANK' : wavetable ? 'BAND-LIMITED MIPS' : 'POLYBLEP';
   updateWaveformScope(readWaveform());
 }
 
@@ -315,11 +359,12 @@ function createKey(note, kind, left, width, label) {
     try { button.setPointerCapture(event.pointerId); } catch {}
     button.classList.add('down');
 
-    const record = { button, released: false, voiceId: null, wavetable: readOscillatorSource() === 'wavetable', initialMorph: readWavetableMorph() };
+    const record = { button, released: false, voiceId: null, wavetable: readOscillatorSource() === 'wavetable', fm: readOscillatorSource() === 'fm', initialMorph: readWavetableMorph() };
     activePointers.set(event.pointerId, record);
     syncHeldKeys();
 
     applySynthParameters();
+    engine.setEngine(record.fm ? 'fm' : 'virtual-analog');
     engine.noteOn({
       note,
       frequency: frequencyForMidi(note),
@@ -336,7 +381,7 @@ function createKey(note, kind, left, width, label) {
           activePointers.delete(event.pointerId);
         }
       } else {
-        message.textContent = `Nota MIDI ${note} ativa · ${record.wavetable ? 'WAVETABLE' : readWaveform().toUpperCase()}`;
+        message.textContent = `Nota MIDI ${note} ativa · ${record.fm ? 'FM / 4 OP' : record.wavetable ? 'WAVETABLE' : readWaveform().toUpperCase()}`;
       }
       syncHeldKeys();
     }).catch((error) => {
@@ -387,7 +432,9 @@ document.querySelectorAll('[data-wave]').forEach((button) => {
 const osc1Source = document.querySelector('#osc1-source');
 const wavetableMorph = document.querySelector('#wavetable-morph');
 osc1Source.addEventListener('change', () => {
+  for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
   updateOscillatorSourceUI();
+  engine.setEngine(readOscillatorSource() === 'fm' ? 'fm' : 'virtual-analog');
   applySynthParameters();
 });
 wavetableMorph.addEventListener('input', () => {
@@ -399,6 +446,32 @@ wavetableMorph.addEventListener('input', () => {
     if (record.wavetable && record.voiceId && !record.released) engine.setWavetableMorph(record.voiceId, morph);
   }
 });
+
+const fmAlgorithm = document.querySelector('#fm-algorithm');
+const fmFeedback = document.querySelector('#fm-feedback');
+fmAlgorithm.addEventListener('change', () => {
+  document.querySelector('#fm-algorithm-value').textContent = String(fmAlgorithm.value).padStart(2, '0');
+  applySynthParameters();
+});
+fmFeedback.addEventListener('input', () => {
+  document.querySelector('#fm-feedback-value').textContent = `${fmFeedback.value}%`;
+  applySynthParameters();
+});
+for (let op = 1; op <= 4; op++) {
+  for (const name of ['ratio', 'level', 'index', 'attack', 'decay', 'sustain', 'release']) {
+    const input = document.querySelector(`#fm-op${op}-${name}`);
+    const output = document.querySelector(`#fm-op${op}-${name}-value`);
+    input.addEventListener('input', () => {
+      const value = Number(input.value);
+      const unit = name === 'ratio' ? '×' : name === 'level' || name === 'sustain' ? '%' : name === 'attack' || name === 'decay' || name === 'release' ? ' ms' : '';
+      const shown = name === 'ratio' || name === 'index' ? value.toFixed(2) : Math.round(value);
+      output.value = `${shown}${unit}`;
+      output.textContent = output.value;
+      applySynthParameters();
+    });
+  }
+}
+syncFMControls();
 
 for (const [id, unit] of [
   ['attack', 'ms'],
@@ -638,7 +711,9 @@ patchSelect.addEventListener('change', () => {
 savePatchButton.addEventListener('click', () => {
   try {
     const name = patchNameInput.value.trim();
-    const patch = createVirtualAnalogPatch(engine.getParameters(), name);
+    const patch = readOscillatorSource() === 'fm'
+      ? createFMEnginePatch(readFMParameters(), name)
+      : createVirtualAnalogPatch(engine.getParameters(), name);
     savePatch(localStorage, patch);
     patchNameInput.value = patch.name;
     patchTitle.textContent = patch.name;
@@ -653,6 +728,21 @@ loadPatchButton.addEventListener('click', () => {
   try {
     if (!patchSelect.value) return;
     const patch = loadPatch(localStorage, patchSelect.value);
+    if (patch.engineSlots[0]?.engineId === 'fm') {
+      const fmParameters = applyFMEnginePatch(patch);
+      osc1Source.value = 'fm';
+      masterLevel.value = String(Math.round(fmParameters['global.master-level'] * 100));
+      masterLevelOutput.value = `${masterLevel.value}%`;
+      masterLevelOutput.textContent = masterLevelOutput.value;
+      syncFMControls(fmParameters);
+      updateOscillatorSourceUI();
+      engine.setEngine('fm');
+      engine.setFMParameters(fmParameters);
+      patchNameInput.value = patch.name;
+      patchTitle.textContent = patch.name;
+      message.textContent = `Patch FM \"${patch.name}\" carregado com quatro operadores.`;
+      return;
+    }
     const parameters = applyVirtualAnalogPatch(patch);
     masterLevel.value = String(Math.round(parameters['global.master-level'] * 100));
     masterLevelOutput.value = `${masterLevel.value}%`;
@@ -788,6 +878,8 @@ loadPatchButton.addEventListener('click', () => {
     }
     updateEnvelopeGraph();
     osc1Source.value = parameters['engine.virtual-analog.osc-source'];
+    updateOscillatorSourceUI();
+    engine.setEngine('virtual-analog');
     wavetableMorph.value = String(Math.round(parameters['engine.virtual-analog.wavetable-morph'] * 100));
     updateWavetableMorphReadout();
     updateOscillatorSourceUI();

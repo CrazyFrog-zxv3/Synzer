@@ -5,7 +5,8 @@ class SynzerAudioProcessor extends AudioWorkletProcessor {
     super();
     const config = options?.processorOptions ?? {};
     this.engineRegistry = createDefaultEngineRegistry();
-    this.engine = this.engineRegistry.create('virtual-analog', {
+    this.engineId = config.engineId ?? 'virtual-analog';
+    this.engine = this.engineRegistry.create(this.engineId, {
       sampleRate,
       maxVoices: config.maxVoices ?? 12,
       stealFadeSeconds: config.stealFadeSeconds ?? 0.005,
@@ -13,7 +14,12 @@ class SynzerAudioProcessor extends AudioWorkletProcessor {
     });
     this.port.onmessage = ({ data }) => {
       try {
-        if (data?.type === 'SET_PARAMETERS') this.engine.setParameters(data.parameters);
+        if (data?.type === 'SET_ENGINE') {
+          if (!this.engineRegistry.has(data.engineId)) throw new Error('Unknown synthesis engine: ' + String(data.engineId));
+          this.engine = this.engineRegistry.create(data.engineId, { sampleRate, maxVoices: config.maxVoices ?? 12, voiceGain: config.voiceGain ?? 0.075 });
+          this.engineId = data.engineId;
+        }
+        else if (data?.type === 'SET_PARAMETERS') this.engine.setParameters(data.parameters);
         else if (data?.type === 'NOTE_ON') this.engine.noteOn(data.voice);
         else if (data?.type === 'NOTE_OFF') this.engine.noteOff(data.voiceId);
         else if (data?.type === 'SET_WAVETABLE_MORPH') {

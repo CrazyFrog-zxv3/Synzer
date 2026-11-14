@@ -136,3 +136,25 @@ O catálogo reconhece Virtual Analog como disponível. Wavetable, FM/PM, aditiva
 Este incremento é uma fundação arquitetural: ainda não oferece seleção de motores na interface, mistura entre motores, parâmetros universais, modulação ou presets multi-engine. A abstração já está conectada ao AudioWorklet, mas o runtime continua usando somente o Virtual Analog.
 
 Validação pendente após os commits deste incremento: execução confirmada da suíte Node e do Chromium CI. A leitura dos arquivos no GitHub confirma persistência, mas não substitui execução dos testes.
+
+
+## 10. Motor FM/PM de quatro operadores integrado — 14/11/2026
+
+A branch de desenvolvimento agora contém um motor FM/PM funcional e selecionável no SOURCE BANK, sem substituir o Virtual Analog ou o oscilador Wavetable existente.
+
+- `packages/dsp-engine/src/core/FMVoiceEngine.js`: quatro operadores senoidais por voz, quatro algoritmos de roteamento, ratio por operador, nível, índice de modulação no operador fonte, feedback do OP04, ADSR independente por operador, polifonia e voice stealing.
+- `EngineRegistry`: FM/PM passa a `available` e recebe factory própria. As famílias aditiva, sample, granular, spectral e modelagem física permanecem planejadas.
+- `synzer-processor.js` e `SynzerEngine.js`: inicialização por `engineId` e troca de motor via `SET_ENGINE`, sem reconstruir o AudioWorkletNode.
+- SOURCE BANK: painel FM próprio com algoritmo, feedback, quatro módulos de operador e envelopes. O teclado existente dispara notas no motor selecionado.
+- `PatchStore.js`: serialização e restauração de patches FM no modelo versionado existente.
+- `docs/FM-DSP-FOUNDATION.md`: roteamentos, integração e limitações técnicas.
+
+### Evidência de validação
+
+- Suíte Node: 179/179 testes aprovados.
+- Chromium: smoke completo aprovado, incluindo nota FM no AudioWorklet e RMS medido por AnalyserNode (`0.03323` no cenário de teste), troca de algoritmo, feedback, ratio, index, envelopes, patch save/load e viewports 360×800 / 800×360 sem overflow horizontal.
+- Benchmark FM: 12 vozes, 48 kHz, bloco 128, 2.000 blocos de aquecimento e 10.000 medidos. Um run Linux x64 / Node 22 registrou média 0,16774 ms, p95 0,17987 ms, 6,75% do orçamento de 2,66667 ms por bloco. Não extrapolar esse número para Android.
+
+### Limitações conhecidas
+
+O FM atual produz saída central duplicada em L/R, possui ADSRs próprios, mas ainda não compartilha o filtro TPT, LFO/matriz, Unison, Noise ou rack de efeitos do VA. Os operadores são senoidais e ainda não existe oversampling/anti-aliasing específico para sidebands de FM acima de Nyquist. O motor não foi testado fisicamente no POCO/Android.
