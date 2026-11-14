@@ -267,6 +267,17 @@ try {
     viewportResults.push({ ...viewport, ...dimensions, horizontalOverflow: false });
   }
 
+  const wavetablePage = await browser.newPage();
+  const wavetablePageErrors = [];
+  wavetablePage.on('pageerror', (error) => wavetablePageErrors.push(error.message));
+  await wavetablePage.goto(`${baseUrl}/tests/browser/wavetable-smoke.html`);
+  await wavetablePage.locator('#run').click();
+  await wavetablePage.locator('#status[data-status=\"pass\"], #status[data-status=\"fail\"]').waitFor({ timeout: 15000 });
+  const wavetableStatus = await wavetablePage.locator('#status').getAttribute('data-status');
+  const wavetableDetails = JSON.parse(await wavetablePage.locator('#details').textContent());
+  assert.equal(wavetableStatus, 'pass', `Wavetable browser integration failed: ${JSON.stringify(wavetableDetails)}`);
+  assert.deepEqual(wavetablePageErrors, [], `Wavetable browser page errors: ${wavetablePageErrors.join('; ')}`);
+
   process.stdout.write(JSON.stringify({
     status: 'PASS',
     checks: [
@@ -283,6 +294,8 @@ try {
       'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, Unison 4-lane com spread estéreo L/R medido, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
+    wavetableBrowser: wavetableDetails,
+    wavetablePageErrors,
     responsiveViewports: viewportResults,
     pageErrors,
   }, null, 2) + '\n');

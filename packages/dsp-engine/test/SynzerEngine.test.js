@@ -195,3 +195,18 @@ test('parameter updates are validated, retained before initialization and sent t
     assert.equal(h.engine.getParameters()['global.master-level'], 0.2);
   } finally { await h.engine.close(); h.restore(); }
 });
+
+test('SynzerEngine forwards per-voice wavetable definitions and live morph commands', async () => {
+  const h = createHarness();
+  try {
+    const wavetable = { size: 256, morph: 0.25, partialFrames: [[{ harmonic: 1, amplitude: 1 }], [{ harmonic: 2, amplitude: 1 }]] };
+    const voiceId = await h.engine.noteOn({ note: 60, frequency: 440, wavetable });
+    assert.deepEqual(h.messages.at(-1).voice.wavetable, wavetable);
+    const analogVoiceId = await h.engine.noteOn({ note: 62, frequency: 493.88 });
+    assert.equal(h.engine.setWavetableMorph(voiceId, 0.75), true);
+    assert.deepEqual(h.messages.at(-1), { type: 'SET_WAVETABLE_MORPH', voiceId, morph: 0.75 });
+    assert.equal(h.engine.setWavetableMorph('missing', 0.5), false);
+    assert.equal(h.engine.setWavetableMorph(analogVoiceId, 0.5), false);
+    assert.throws(() => h.engine.setWavetableMorph(voiceId, -0.1), RangeError);
+  } finally { await h.engine.close(); h.restore(); }
+});

@@ -962,3 +962,101 @@ test('mono rendering remains centered even when Unison stereo spread is configur
   wideSetting.render(wideMono);
   assert.deepEqual(wideMono, centerMono, 'mono output must fold Unison to its centered image regardless of spread setting');
 });
+
+test('wavetable voices render from harmonic mip banks and preserve per-voice morph state', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.noteOn({
+    id: 'wavetable-voice', note: 60, frequency: 440, velocity: 1,
+    envelope: FAST_ENVELOPE,
+    wavetable: {
+      size: 256,
+      morph: 0.5,
+      partialFrames: [
+        [{ harmonic: 1, amplitude: 1 }],
+        [{ harmonic: 1, amplitude: 1 }, { harmonic: 2, amplitude: 0.5 }],
+      ],
+    },
+  });
+  const voice = engine.getVoice('wavetable-voice');
+  assert.equal(voice.wavetable.enabled, true);
+  assert.equal(voice.wavetable.morph, 0.5);
+  const { left, right } = render(engine, 256);
+  assert.ok(left.some((sample) => sample !== 0));
+  assert.deepEqual(right, left);
+  assert.ok([...left, ...right].every(Number.isFinite));
+});
+
+test('wavetable morph can be changed on an active voice without resetting oscillator phase', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.noteOn({
+    id: 'morph-voice', note: 60, frequency: 440, envelope: FAST_ENVELOPE,
+    wavetable: { size: 256, morph: 0, partialFrames: [[{ harmonic: 1, amplitude: 1 }], [{ harmonic: 2, amplitude: 1 }]] },
+  });
+  render(engine, 37);
+  const phaseBefore = engine.getVoice('morph-voice').wavetable.phase;
+  assert.equal(engine.setWavetableMorph('morph-voice', 1), true);
+  const voice = engine.getVoice('morph-voice');
+  assert.equal(voice.wavetable.morph, 1);
+  assert.equal(voice.wavetable.phase, phaseBefore);
+  assert.equal(engine.setWavetableMorph('missing', 0.5), false);
+  assert.throws(() => engine.setWavetableMorph('morph-voice', 1.1), RangeError);
+});
+
+test('wavetable voice rejects malformed harmonic definitions before allocating a voice', () => {
+  const engine = createEngine();
+  assert.throws(() => engine.noteOn({
+    id: 'bad-wavetable', note: 60, frequency: 440,
+    wavetable: { size: 256, partials: [{ harmonic: 0, amplitude: 1 }] },
+  }), /harmonic/i);
+  assert.equal(engine.voiceCount, 0);
+});
+
+test('wavetable mip selection follows each voice pitch without per-sample selection records', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.noteOn({ id: 'low-wt', note: 60, frequency: 440, envelope: FAST_ENVELOPE, wavetable: {
+    size: 256,
+    partials: [1, 2, 4, 8].map((harmonic) => ({ harmonic, amplitude: 1 / harmonic })),
+  } });
+  engine.noteOn({ id: 'high-wt', note: 84, frequency: 3000, envelope: FAST_ENVELOPE, wavetable: {
+    size: 256,
+    partials: [1, 2, 4, 8].map((harmonic) => ({ harmonic, amplitude: 1 / harmonic })),
+  } });
+  render(engine, 64);
+  assert.equal(engine.getVoice('low-wt').wavetable.mipTargetIndex, 3);
+  assert.equal(engine.getVoice('high-wt').wavetable.mipTargetIndex, 0);
+  assert.ok([...engine.getVoice('low-wt').unison.oscillator1Phases].every(Number.isFinite));
+});
+
+test('live Unison changes resize Wavetable lanes while preserving the primary phase', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.noteOn({ id: 'wavetable-unison', note: 60, frequency: 440, envelope: FAST_ENVELOPE, wavetable: {
+    size: 256,
+    partials: [{ harmonic: 1, amplitude: 1 }, { harmonic: 2, amplitude: 0.5 }],
+  } });
+  render(engine, 31);
+  const phaseBefore = engine.getVoice('wavetable-unison').wavetable.phase;
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 3 });
+  assert.equal(engine.getVoice('wavetable-unison').unison.voices, 3);
+  assert.equal(engine.getVoice('wavetable-unison').wavetable.phase, phaseBefore);
+  const { left, right } = render(engine, 128);
+  assert.ok([...left, ...right].every(Number.isFinite));
+  assert.ok(left.some((sample) => sample !== 0));
+});
+
+test('EG 03 pitch modulation drives Wavetable mip selection at the modulated pitch', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0,
+    'engine.virtual-analog.pitch-env-decay': 0,
+    'engine.virtual-analog.pitch-env-sustain': 1,
+    'engine.virtual-analog.pitch-env-osc1-amount': 48,
+    'engine.virtual-analog.pitch-env-osc1-enabled': true,
+  });
+  engine.noteOn({ id: 'pitch-modulated-wt', note: 69, frequency: 440, envelope: FAST_ENVELOPE, wavetable: {
+    size: 256,
+    partials: [1, 2, 4, 8].map((harmonic) => ({ harmonic, amplitude: 1 / harmonic })),
+  } });
+  assert.equal(engine.getVoice('pitch-modulated-wt').wavetable.mipTargetIndex, 3);
+  render(engine, 32);
+  assert.equal(engine.getVoice('pitch-modulated-wt').wavetable.mipTargetIndex, 0);
+});

@@ -3,6 +3,7 @@ import { TptStateVariableFilter } from './TptStateVariableFilter.js';
 import { LfoOscillator } from './LfoOscillator.js';
 import { ModulationMatrix } from './ModulationMatrix.js';
 import { NoiseGenerator } from './NoiseGenerator.js';
+import { createHarmonicWavetableMipBank, WavetableOscillator } from './WavetableOscillator.js';
 
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
@@ -102,7 +103,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), filterRightState: voice.filterRight.getState(), oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, sub: { ...voice.sub }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, spread: voice.unison.spread, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), filterRightState: voice.filterRight.getState(), wavetable: voice.wavetableOscillators ? { enabled: true, morph: voice.wavetableOscillators[0].morph, phase: voice.wavetableOscillators[0].phase, mipCurrentIndex: voice.wavetableOscillators[0].mipCurrentIndex, mipTargetIndex: voice.wavetableOscillators[0].mipTargetIndex } : { enabled: false, morph: 0, phase: voice.phase, mipCurrentIndex: 0, mipTargetIndex: 0 }, oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, sub: { ...voice.sub }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, spread: voice.unison.spread, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -215,6 +216,17 @@ export class VoiceEngine {
         };
         voice.phase = primaryOsc1Phase;
         voice.oscillator2.phase = primaryOsc2Phase;
+        if (voice.wavetableOscillators) {
+          const bank = voice.wavetableOscillators[0].bank;
+          const morph = voice.wavetableOscillators[0].morph;
+          voice.wavetableOscillators = Array.from({ length: this.defaultUnison.voices }, (_, lane) => new WavetableOscillator({
+            bank,
+            sampleRate: this.sampleRate,
+            frequency: voice.frequency,
+            phase: lane < voice.unison.oscillator1Phases.length ? voice.unison.oscillator1Phases[lane] : primaryOsc1Phase,
+            morph,
+          }));
+        }
       }
       voice.filterBaseCutoff = filterParameters.cutoff;
       voice.filter.setParameters(filterParameters);
@@ -253,6 +265,18 @@ export class VoiceEngine {
       throw new TypeError(`waveform must be one of: ${[...SUPPORTED_WAVEFORMS].join(', ')}.`);
     }
     const normalizedEnvelope = normalizeEnvelope(envelope);
+    let wavetableBank = null;
+    let wavetableMorph = 0;
+    if (input.wavetable !== undefined && input.wavetable !== null) {
+      if (typeof input.wavetable !== 'object' || Array.isArray(input.wavetable)) throw new TypeError('wavetable must be an object.');
+      wavetableMorph = input.wavetable.morph ?? 0;
+      assertFiniteRange('wavetable morph', wavetableMorph, 0, 1);
+      wavetableBank = createHarmonicWavetableMipBank({
+        size: input.wavetable.size ?? 2048,
+        ...(input.wavetable.partials === undefined ? {} : { partials: input.wavetable.partials }),
+        ...(input.wavetable.partialFrames === undefined ? {} : { partialFrames: input.wavetable.partialFrames }),
+      });
+    }
     const oscillator2Frequency = oscillatorFrequency2(frequency, this.defaultOscillator2, this.sampleRate);
     const oscillator2 = {
       ...this.defaultOscillator2,
@@ -303,6 +327,10 @@ export class VoiceEngine {
     };
     const filter = new TptStateVariableFilter(filterParameters);
     const filterRight = new TptStateVariableFilter(filterParameters);
+    const wavetableOscillators = wavetableBank ? Array.from({ length: this.defaultUnison.voices }, (_, lane) => new WavetableOscillator({
+      bank: wavetableBank, sampleRate: this.sampleRate, frequency,
+      phase: unison.oscillator1Phases[lane], morph: wavetableMorph,
+    })) : null;
 
     if (this.activeVoiceCount >= this.maxVoices) {
       if (this.stealTailCount >= this.maxStealTails) throw new Error('Steal-tail capacity reached; retry after the current audio block.');
@@ -311,13 +339,21 @@ export class VoiceEngine {
     if (this.activeVoiceCount >= this.maxVoices) throw new Error('Polyphony limit reached; no voice could be allocated.');
 
     const voice = {
-      id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
+      id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate, wavetableOscillators,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
       stealRemaining: 0, stealStartLevel: 0, filter, filterRight, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, pitchEnvelope, lfo, oscillator2, noise, noiseEnabled: this.defaultNoise.enabled, noiseLevel: this.defaultNoise.level, sub, unison,
     };
     this.voices.set(id, voice);
     return id;
+  }
+
+  setWavetableMorph(id, morph) {
+    assertFiniteRange('wavetable morph', morph, 0, 1);
+    const voice = this.voices.get(id);
+    if (!voice?.wavetableOscillators) return false;
+    for (const oscillator of voice.wavetableOscillators) oscillator.setMorph(morph);
+    return true;
   }
 
   noteOff(id) {
@@ -608,7 +644,15 @@ export class VoiceEngine {
           const oscillatorPhaseIncrement1 = osc1PitchSemitones === 0
             ? voice.phaseIncrement
             : Math.min(this.sampleRate * 0.45, voice.frequency * (2 ** (osc1PitchSemitones / 12))) / this.sampleRate;
-          const oscillatorSample1 = renderOscillatorSample(voice.waveform, voice.phase, oscillatorPhaseIncrement1);
+          let oscillatorSample1;
+          if (voice.wavetableOscillators) {
+            const wavetableOscillator = voice.wavetableOscillators[0];
+            wavetableOscillator.setFrequency(oscillatorPhaseIncrement1 * this.sampleRate);
+            oscillatorSample1 = wavetableOscillator.processSample();
+            voice.phase = wavetableOscillator.phase;
+          } else {
+            oscillatorSample1 = renderOscillatorSample(voice.waveform, voice.phase, oscillatorPhaseIncrement1);
+          }
           const oscillatorPhaseIncrement2 = osc2PitchSemitones === 0
             ? oscillator2.phaseIncrement
             : Math.min(this.sampleRate * 0.45, oscillator2.frequency * (2 ** (osc2PitchSemitones / 12))) / this.sampleRate;
@@ -619,8 +663,10 @@ export class VoiceEngine {
           }
           oscillatorSampleLeft = oscillatorSample;
           oscillatorSampleRight = oscillatorSample;
-          voice.phase += oscillatorPhaseIncrement1;
-          if (voice.phase >= 1) voice.phase -= 1;
+          if (!voice.wavetableOscillators) {
+            voice.phase += oscillatorPhaseIncrement1;
+            if (voice.phase >= 1) voice.phase -= 1;
+          }
           oscillator2.phase += oscillatorPhaseIncrement2;
           if (oscillator2.phase >= 1) oscillator2.phase -= 1;
           voice.unison.oscillator1Phases[0] = voice.phase;
@@ -645,15 +691,25 @@ export class VoiceEngine {
               this.sampleRate * 0.45,
               voice.frequency * (2 ** ((osc1PitchSemitones + detuneSemitones) / 12)),
             ) / this.sampleRate;
-            const oscillatorSample1 = renderOscillatorSample(voice.waveform, oscillator1Phases[lane], oscillatorPhaseIncrement1);
+            let oscillatorSample1;
+            if (voice.wavetableOscillators) {
+              const wavetableOscillator = voice.wavetableOscillators[lane];
+              wavetableOscillator.setFrequency(oscillatorPhaseIncrement1 * this.sampleRate);
+              oscillatorSample1 = wavetableOscillator.processSample();
+              oscillator1Phases[lane] = wavetableOscillator.phase;
+            } else {
+              oscillatorSample1 = renderOscillatorSample(voice.waveform, oscillator1Phases[lane], oscillatorPhaseIncrement1);
+            }
             oscillator1Sum += oscillatorSample1;
             const pan = position * spread;
             const leftGain = pan > 0 ? 1 - pan : 1;
             const rightGain = pan < 0 ? 1 + pan : 1;
             oscillator1LeftSum += oscillatorSample1 * leftGain;
             oscillator1RightSum += oscillatorSample1 * rightGain;
-            oscillator1Phases[lane] += oscillatorPhaseIncrement1;
-            if (oscillator1Phases[lane] >= 1) oscillator1Phases[lane] -= 1;
+            if (!voice.wavetableOscillators) {
+              oscillator1Phases[lane] += oscillatorPhaseIncrement1;
+              if (oscillator1Phases[lane] >= 1) oscillator1Phases[lane] -= 1;
+            }
 
             const oscillatorPhaseIncrement2 = Math.min(
               this.sampleRate * 0.45,

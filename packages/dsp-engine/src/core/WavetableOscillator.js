@@ -104,7 +104,7 @@ export class WavetableMipBank {
   get frameCount() { return this.#frameCount; }
   get tableSize() { return this.#tableSize; }
 
-  select(frequency, sampleRate, nyquistMargin = 0.9) {
+  selectLevelIndex(frequency, sampleRate, nyquistMargin = 0.9) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000) throw new RangeError('Sample rate must be at least 8000 Hz.');
     if (!Number.isFinite(frequency) || frequency < 0 || frequency > sampleRate * 0.45) {
       throw new RangeError('Frequency must be between 0 and 45% of the sample rate.');
@@ -118,8 +118,14 @@ export class WavetableMipBank {
       if (this.#levels[index].maxHarmonic > safeHarmonics) break;
       levelIndex = index;
     }
-    const level = this.#levels[levelIndex];
-    return { levelIndex, maxHarmonic: level.maxHarmonic, safeHarmonics };
+    return levelIndex;
+  }
+
+  select(frequency, sampleRate, nyquistMargin = 0.9) {
+    const levelIndex = this.selectLevelIndex(frequency, sampleRate, nyquistMargin);
+    const maxHarmonic = this.#levels[levelIndex].maxHarmonic;
+    const safeHarmonics = frequency === 0 ? Infinity : (sampleRate * 0.5 * nyquistMargin) / frequency;
+    return { levelIndex, maxHarmonic, safeHarmonics };
   }
 
   sampleLevel(phase, morph, levelIndex) {
@@ -202,10 +208,10 @@ export class WavetableOscillator {
     }
     this.frequency = frequency;
     if (this.bank instanceof WavetableMipBank) {
-      const selection = this.bank.select(frequency, this.sampleRate);
-      if (selection.levelIndex !== this.mipTargetIndex) {
+      const selectionIndex = this.bank.selectLevelIndex(frequency, this.sampleRate);
+      if (selectionIndex !== this.mipTargetIndex) {
         this.mipCurrentIndex = this.mipFadeRemaining > 0 ? this.mipTargetIndex : this.mipCurrentIndex;
-        this.mipTargetIndex = selection.levelIndex;
+        this.mipTargetIndex = selectionIndex;
         this.mipFadeRemaining = this.mipFadeSamples;
         if (this.mipCurrentIndex === this.mipTargetIndex) this.mipFadeRemaining = 0;
       }

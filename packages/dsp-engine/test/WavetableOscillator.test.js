@@ -186,3 +186,13 @@ test('spectral mip filtering remains below the Nyquist guard at both common audi
     assert.ok(magnitudeAt(768) < 1e-4, `third harmonic leaked at ${sampleRate} Hz`);
   }
 });
+
+test('mip level index can be selected without allocating a selection record', () => {
+  const bank = createHarmonicWavetableMipBank({
+    size: 256,
+    partials: [1, 2, 4, 8].map((harmonic) => ({ harmonic, amplitude: 1 / harmonic })),
+  });
+  assert.equal(bank.selectLevelIndex(440, 8000), 3);
+  assert.equal(bank.selectLevelIndex(3000, 8000), 0);
+  assert.equal(bank.select(3000, 8000).maxHarmonic, 1);
+});

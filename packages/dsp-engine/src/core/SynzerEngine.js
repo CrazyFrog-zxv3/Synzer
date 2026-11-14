@@ -13,6 +13,7 @@ export class SynzerEngine {
     this.resumePromise = null;
     this.voiceSequence = 0;
     this.handles = new Map();
+    this.wavetableHandles = new Set();
     this.noteStacks = new Map();
     this.lifecycleGeneration = 0;
     this.processorFailure = null;
@@ -77,6 +78,7 @@ export class SynzerEngine {
           error.voiceId = data.voiceId;
           const note = this.handles.get(data.voiceId);
           if (this.handles.delete(data.voiceId)) {
+            this.wavetableHandles.delete(data.voiceId);
             const stack = this.noteStacks.get(note) ?? [];
             const index = stack.indexOf(data.voiceId);
             if (index >= 0) stack.splice(index, 1);
@@ -130,17 +132,25 @@ export class SynzerEngine {
     return this.getParameters();
   }
 
-  async noteOn({ note, frequency, velocity = 1, waveform, envelope } = {}) {
+  async noteOn({ note, frequency, velocity = 1, waveform, envelope, wavetable } = {}) {
     await this.initialize();
     if (this.processorFailure) throw this.processorFailure;
     const voiceId = `synzer-voice-${++this.voiceSequence}`;
-    const voice = { id: voiceId, note, frequency, velocity, ...(waveform === undefined ? {} : { waveform }), ...(envelope === undefined ? {} : { envelope }) };
+    const voice = { id: voiceId, note, frequency, velocity, ...(waveform === undefined ? {} : { waveform }), ...(envelope === undefined ? {} : { envelope }), ...(wavetable === undefined ? {} : { wavetable }) };
     this.node.port.postMessage({ type: 'NOTE_ON', voice });
     this.handles.set(voiceId, note);
+    if (wavetable !== undefined && wavetable !== null) this.wavetableHandles.add(voiceId);
     const stack = this.noteStacks.get(note) ?? [];
     stack.push(voiceId);
     this.noteStacks.set(note, stack);
     return voiceId;
+  }
+
+  setWavetableMorph(voiceId, morph) {
+    if (!Number.isFinite(morph) || morph < 0 || morph > 1) throw new RangeError('Wavetable morph must be between 0 and 1.');
+    if (!this.handles.has(voiceId) || !this.wavetableHandles.has(voiceId)) return false;
+    if (this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_WAVETABLE_MORPH', voiceId, morph });
+    return true;
   }
 
   async noteOff(voiceId) {
@@ -151,6 +161,7 @@ export class SynzerEngine {
     this.node.port.postMessage({ type: 'NOTE_OFF', voiceId });
     const note = this.handles.get(voiceId);
     this.handles.delete(voiceId);
+    this.wavetableHandles.delete(voiceId);
     const stack = this.noteStacks.get(note) ?? [];
     const index = stack.indexOf(voiceId);
     if (index >= 0) stack.splice(index, 1);
@@ -175,6 +186,7 @@ export class SynzerEngine {
     this.processorFailure = null;
     if (node) { node.disconnect(); node.port.close(); }
     this.handles.clear();
+    this.wavetableHandles.clear();
     this.noteStacks.clear();
     if (context && context.state !== 'closed') await context.close();
   }

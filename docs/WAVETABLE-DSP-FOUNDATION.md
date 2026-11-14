@@ -63,3 +63,23 @@ The existing Virtual Analog engine and public Pages build remain unchanged by th
 - Crossfade length is fixed at 64 samples and is not yet exposed as a patch/engine parameter.
 - No per-sample frequency modulation integration, VoiceEngine/AudioWorklet integration, ARM64 benchmark or physical Android test has been performed.
 - Wavetable remains `planned` in EngineRegistry and is not yet a playable instrument family.
+
+## VoiceEngine and AudioWorklet integration — increment 3
+
+Wavetable now has a real per-voice render path inside the existing Virtual Analog `VoiceEngine`, without being promoted to a separate EngineRegistry family or replacing the established VA waveform path.
+
+- `VoiceEngine.noteOn()` accepts an optional `wavetable` definition containing `size`, either `partials` or `partialFrames`, and an initial `morph` value. It builds one immutable mip bank for that voice and creates one oscillator state per Unison lane.
+- The Wavetable oscillator replaces OSC 01's waveform source for that voice. Existing amplitude/filter envelopes, pitch modulation, filtering, voice stealing, stereo spread, OSC 02, noise and sub oscillator remain in the shared voice path.
+- Per-sample pitch modulation updates the Wavetable frequency, so mip selection tracks the instantaneous oscillator pitch. The oscillator uses an integer-returning `selectLevelIndex()` path to avoid allocating a selection object in the audio render loop.
+- `VoiceEngine.setWavetableMorph(voiceId, morph)` updates active voices without resetting phase. Live Unison changes rebuild the Wavetable lane states while preserving the primary phase.
+- `SynzerEngine.noteOn()` forwards the Wavetable definition to the Worklet. The Worklet accepts `SET_WAVETABLE_MORPH` messages and applies the update to the selected voice.
+- `getVoice()` exposes a defensive summary of Wavetable state (enabled, morph, phase and current/target mip indices).
+
+### Validation added
+
+- TDD RED confirmed missing voice, morph, and Worklet integration before implementation.
+- Focused tests cover voice rendering, invalid partial definitions, live morph without phase reset, pitch-dependent mip selection, dynamic Unison resizing, Worklet message routing and SynzerEngine forwarding.
+- Wavetable remains `planned` in EngineRegistry: this is an integrated oscillator source in the VA voice path, not yet a standalone user-selectable engine. Patch persistence, UI controls, sample import and preset authoring are not implemented.
+- The audio render loop performs no per-sample buffer allocation; mip selection in the oscillator avoids a per-sample selection-record allocation. Bank construction still occurs on NOTE_ON in the Worklet message handler and may be expensive for many newly triggered Wavetable voices; shared bank caching is a later optimization.
+
+A desktop benchmark is available via `npm run bench:wavetable-voice`. It measures 12 Wavetable voices, 2048-sample tables and 64 harmonic partials at 48 kHz / 128-sample blocks. Its output is machine-specific and must not be treated as Android/ARM64 evidence.

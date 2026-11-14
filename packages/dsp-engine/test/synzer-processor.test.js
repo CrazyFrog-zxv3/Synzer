@@ -111,3 +111,20 @@ test('AudioWorklet reports invalid parameter updates without corrupting engine s
   assert.equal(processorErrors[0].commandType, 'SET_PARAMETERS');
   assert.equal(processor.engine.getParameters()['global.master-level'], 1);
 });
+
+test('AudioWorklet renders a Wavetable voice and applies live morph updates', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: {} });
+  processor.port.onmessage({ data: { type: 'NOTE_ON', voice: {
+    id: 'worklet-wavetable', note: 69, frequency: 440, velocity: 1,
+    envelope: { attack: 0, decay: 0, sustain: 1, release: 0.01 },
+    wavetable: { size: 256, morph: 0, partialFrames: [[{ harmonic: 1, amplitude: 1 }], [{ harmonic: 2, amplitude: 1 }]] },
+  } } });
+  const left = new Float32Array(256);
+  processor.process([], [[left]]);
+  assert.ok(left.some((sample) => sample !== 0));
+  assert.ok([...left].every(Number.isFinite));
+  processor.port.onmessage({ data: { type: 'SET_WAVETABLE_MORPH', voiceId: 'worklet-wavetable', morph: 1 } });
+  assert.equal(processor.engine.getVoice('worklet-wavetable').wavetable.morph, 1);
+  assert.equal(processorErrors.length, 0);
+});

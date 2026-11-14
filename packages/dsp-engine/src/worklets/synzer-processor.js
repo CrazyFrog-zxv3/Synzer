@@ -16,6 +16,11 @@ class SynzerAudioProcessor extends AudioWorkletProcessor {
         if (data?.type === 'SET_PARAMETERS') this.engine.setParameters(data.parameters);
         else if (data?.type === 'NOTE_ON') this.engine.noteOn(data.voice);
         else if (data?.type === 'NOTE_OFF') this.engine.noteOff(data.voiceId);
+        else if (data?.type === 'SET_WAVETABLE_MORPH') {
+          if (!this.engine.setWavetableMorph(data.voiceId, data.morph)) {
+            throw new Error('Wavetable voice not found: ' + String(data.voiceId));
+          }
+        }
       } catch (error) {
         this.port.postMessage({
           type: 'ENGINE_ERROR',
