@@ -46,7 +46,7 @@ test('band-pass passes its center region and attenuates distant frequencies', ()
 });
 
 test('filter remains finite for extreme supported cutoff and resonance values', () => {
-  for (const mode of ['lowpass', 'highpass', 'bandpass']) {
+  for (const mode of ['lowpass', 'highpass', 'bandpass', 'notch', 'allpass']) {
     const filter = new TptStateVariableFilter({ sampleRate: 44100, mode, cutoff: 20000, resonance: 12 });
     for (let i = 0; i < 200000; i++) {
       const sample = Math.sin(i * 0.31);
