@@ -1,4 +1,4 @@
-const FILTER_MODES = new Set(['off', 'lowpass', 'highpass', 'bandpass']);
+const FILTER_MODES = new Set(['off', 'lowpass', 'highpass', 'bandpass', 'notch', 'allpass']);
 
 const TPT_G_TABLE_STEPS = 16384;
 const TPT_G_TABLE = new Float64Array(TPT_G_TABLE_STEPS + 1);
@@ -67,7 +67,7 @@ export class TptStateVariableFilter {
     const mode = values.mode ?? this.mode;
     const cutoff = values.cutoff ?? this.cutoff;
     const resonance = values.resonance ?? this.resonance;
-    if (!FILTER_MODES.has(mode)) throw new TypeError('Filter mode must be off, lowpass, highpass, or bandpass.');
+    if (!FILTER_MODES.has(mode)) throw new TypeError('Filter mode must be off, lowpass, highpass, bandpass, notch, or allpass.');
     assertRange('cutoff', cutoff, 20, 20000);
     assertRange('resonance', resonance, 0.5, 12);
 
@@ -117,6 +117,8 @@ export class TptStateVariableFilter {
     let output;
     if (this.mode === 'lowpass') output = v2;
     else if (this.mode === 'highpass') output = input - (this.k * v1) - v2;
+    else if (this.mode === 'notch') output = input - (this.k * v1);
+    else if (this.mode === 'allpass') output = input - (2 * this.k * v1);
     else output = v1;
 
     if (!Number.isFinite(output) || !Number.isFinite(this.ic1eq) || !Number.isFinite(this.ic2eq)) {
