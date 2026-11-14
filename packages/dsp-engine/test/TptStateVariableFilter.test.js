@@ -73,3 +73,29 @@ test('filter coefficients can be changed without resetting its integrator state'
   assert.deepEqual(after, before);
   assert.ok(Number.isFinite(filter.process(0.1)));
 });
+
+test('cutoff automation does not evaluate tangent per update', () => {
+  const filter = new TptStateVariableFilter({ sampleRate: 48000, mode: 'lowpass', cutoff: 500 });
+  const originalTan = Math.tan;
+  Math.tan = () => { throw new Error('Math.tan must not run in the audio parameter update path'); };
+  try {
+    for (let index = 0; index < 2000; index++) filter.setCutoff(200 + (index * 7.3));
+  } finally {
+    Math.tan = originalTan;
+  }
+  assert.ok(Number.isFinite(filter.process(0.25)));
+});
+
+test('lookup-based TPT coefficients stay accurate across supported sample rates and cutoff range', () => {
+  for (const sampleRate of [8000, 44100, 48000, 96000, 192000, 384000]) {
+    for (const cutoff of [20, 35, 100, 440, 1000, 5000, 12000, 20000]) {
+      if (cutoff > sampleRate * 0.45) continue;
+      const filter = new TptStateVariableFilter({ sampleRate, mode: 'lowpass', cutoff, resonance: Math.SQRT1_2 });
+      const actual = filter.process(1);
+      const g = Math.tan(Math.PI * cutoff / sampleRate);
+      const k = 1 / Math.SQRT1_2;
+      const expected = (g * g) / (1 + (g * (g + k)));
+      assert.ok(Math.abs(actual - expected) < 1e-6, `coefficient error at ${sampleRate} Hz / ${cutoff} Hz: ${actual} vs ${expected}`);
+    }
+  }
+});

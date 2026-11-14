@@ -277,3 +277,9 @@ The Virtual Analog engine now provides a dedicated sub oscillator per note, inde
 The sub follows the note frequency one or two octaves below and receives the combined OSC 01 pitch modulation (EG 02, EG 03 and LFO 01). Its phase is independent and preserved when waveform, level or octave changes on active voices. It shares the existing voice filter and amplitude envelope; no separate sub envelope, modulation-matrix destination or stereo spread is implemented.
 
 Defaults: disabled, square, level 0.25, octave −1. Disabled state preserves the prior oscillator signal bit-for-bit. When enabled, Sub is linearly mixed and normalized with OSC 01/02 and Noise. The sub phase advances without rendering a waveform while disabled to avoid unnecessary oscillator work. Parameters are typed and included in local patch save/load; unit tests cover pitch ratio, independent phase, live updates and neutral defaults, while browser smoke covers the UI and patch round-trip.
+
+## TPT filter coefficient lookup
+
+The TPT state-variable filter no longer evaluates `Math.tan()` on every cutoff automation update. A shared 16,384-interval table spans normalized frequency 0…0.45 cycles/sample; linear interpolation supplies `g = tan(pi × fc / fs)`. The table is initialized once when the module loads and shared by every voice/filter instance. Integrator states are unchanged when cutoff coefficients update.
+
+Regression tests compare the first low-pass sample against the exact tangent equation across sample rates 8–384 kHz and supported cutoff values, with absolute error below 1e−6. A second test replaces `Math.tan` after module initialization and verifies 2,000 cutoff updates do not call it. The Linux x64 maximum-load benchmark remains approximately 0.95 ms/block; repeated runs overlap the prior 0.95 ms baseline, so no measurable desktop speedup is claimed. The optimization removes a transcendental call from the sample update path, but its benefit on ARM64 remains unmeasured.

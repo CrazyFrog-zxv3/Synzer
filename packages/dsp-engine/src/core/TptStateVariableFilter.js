@@ -1,5 +1,22 @@
 const FILTER_MODES = new Set(['off', 'lowpass', 'highpass', 'bandpass']);
 
+const TPT_G_TABLE_STEPS = 16384;
+const TPT_G_TABLE = new Float64Array(TPT_G_TABLE_STEPS + 1);
+for (let index = 0; index <= TPT_G_TABLE_STEPS; index++) {
+  const normalizedFrequency = (index / TPT_G_TABLE_STEPS) * 0.45;
+  TPT_G_TABLE[index] = Math.tan(Math.PI * normalizedFrequency);
+}
+
+function lookupTptG(frequency, sampleRate) {
+  const normalizedFrequency = Math.min(frequency / sampleRate, 0.45);
+  const position = (normalizedFrequency / 0.45) * TPT_G_TABLE_STEPS;
+  const lowerIndex = Math.min(TPT_G_TABLE_STEPS - 1, Math.floor(position));
+  const fraction = position - lowerIndex;
+  const lower = TPT_G_TABLE[lowerIndex];
+  const upper = TPT_G_TABLE[lowerIndex + 1];
+  return lower + ((upper - lower) * fraction);
+}
+
 function assertRange(name, value, min, max) {
   if (!Number.isFinite(value) || value < min || value > max) {
     throw new RangeError(`${name} must be finite and between ${min} and ${max}.`);
@@ -59,7 +76,7 @@ export class TptStateVariableFilter {
 
   #updateCoefficients() {
     const frequency = Math.min(this.cutoff, this.sampleRate * 0.45);
-    const g = Math.tan(Math.PI * frequency / this.sampleRate);
+    const g = lookupTptG(frequency, this.sampleRate);
     this.k = 1 / this.resonance;
     this.a1 = 1 / (1 + g * (g + this.k));
     this.a2 = g * this.a1;
