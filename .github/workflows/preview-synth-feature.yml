@@ -1,0 +1,58 @@
+name: Deploy SYNZER synth feature preview
+
+on:
+  push:
+    branches:
+      - feature/synth-filter-modes-v0.1.0
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production site from main (preserve root)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site-root
+      - name: Checkout synth feature into preview/
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: site-root/preview
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Validate preview entry points
+        working-directory: site-root/preview
+        run: |
+          test -f index.html
+          test -f main.js
+          test -f packages/dsp-engine/src/core/SynzerEngine.js
+          test -f packages/dsp-engine/src/core/VoiceEngine.js
+          test -f packages/dsp-engine/src/worklets/synzer-processor.js
+          node --check main.js
+          node --check packages/dsp-engine/src/core/SynzerEngine.js
+          node --check packages/dsp-engine/src/core/VoiceEngine.js
+          node --check packages/dsp-engine/src/worklets/synzer-processor.js
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site-root
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy feature preview alongside production
+        id: deployment
+        uses: actions/deploy-pages@v4
