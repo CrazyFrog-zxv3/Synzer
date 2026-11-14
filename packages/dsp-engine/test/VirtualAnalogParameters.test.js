@@ -148,14 +148,15 @@ test('normalization fills defaults and validates type, scope, range and enum cho
 
 test('filter parameter definitions validate modes, cutoff and resonance', () => {
   const normalized = normalizeVirtualAnalogParameters({
-    'engine.virtual-analog.filter-mode': 'bandpass',
+    'engine.virtual-analog.filter-mode': 'allpass',
     'engine.virtual-analog.filter-cutoff': 2400,
     'engine.virtual-analog.filter-resonance': 4,
   });
-  assert.equal(normalized['engine.virtual-analog.filter-mode'], 'bandpass');
+  assert.equal(normalized['engine.virtual-analog.filter-mode'], 'allpass');
   assert.equal(normalized['engine.virtual-analog.filter-cutoff'], 2400);
   assert.equal(normalized['engine.virtual-analog.filter-resonance'], 4);
-  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-mode': 'notch' }), /choice/i);
+  assert.equal(normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-mode': 'notch' })['engine.virtual-analog.filter-mode'], 'notch');
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-mode': 'comb' }), /choice/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-cutoff': 10 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.filter-resonance': 13 }), /range/i);
 });
