@@ -301,3 +301,6 @@ Unison lanes can now be distributed across left/right channels before the per-vo
 Each voice owns left/right TPT filter states when spread is active, preserving filtering after the stereo image is created. At zero spread, or with one lane / mono output, only the left filter is processed and its state is copied to the right filter at the end of the render quantum; this avoids doubling filter cost in the default mono-compatible mode. Returning spread from a nonzero value to zero copies the left integrator state to the right before rendering, avoiding a persistent stereo image. Filter cutoff modulation updates both channels. Live spread changes do not reset oscillator phases.
 
 The WAVEFORM panel exposes the 0…100% control and PatchStore persists it. Tests cover lane separation, center equality at zero, live changes, phase continuity, filter-state synchronization and patch round-trip. Chromium AudioWorklet smoke measures a left/right difference RMS of 0.002871 with 65% spread in the current scenario. Android/ARM64 performance and physical headphone listening remain outstanding.
+
+
+The local patch-store regression suite also verifies JSON save/load round-trips for all six filter modes (`off`, `lowpass`, `highpass`, `bandpass`, `notch`, `allpass`).
