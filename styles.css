@@ -272,3 +272,20 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:2px soli
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; }
 }
+
+/* Touch ergonomics: preserve the 48 dp minimum target across the instrument. */
+.patch-name,.patch-select,.patch-action,.stop-button { min-height:48px; }
+.tab { min-height:48px; }
+.layer-slot { width:48px; height:48px; min-width:48px; }
+input[type="range"] { min-height:48px; }
+.route-enable input { width:48px; height:30px; }
+.route-enable input::after { top:4px; left:4px; width:20px; height:20px; }
+.route-enable input:checked::after { transform:translateX(18px); }
+@media (max-width:720px) {
+  .editor-head { flex-wrap:wrap; }
+  .layer-row { margin-left:auto; }
+  .tab { min-height:48px; }
+}
+@media (orientation:landscape) and (max-height:520px) {
+  .tab { min-height:44px; }
+}
