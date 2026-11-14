@@ -81,6 +81,15 @@ button.addEventListener('click', async () => {
       'engine.virtual-analog.lfo-osc2-pitch-amount': -3,
       'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
     });
+    const filterModeChecks = [];
+    for (const mode of ['notch', 'allpass']) {
+      engine.setParameters({ 'engine.virtual-analog.filter-mode': mode });
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      leftAnalyser.getFloatTimeDomainData(new Float32Array(leftAnalyser.fftSize));
+      filterModeChecks.push(mode);
+    }
+    engine.setParameters({ 'engine.virtual-analog.filter-mode': 'lowpass' });
+
     const voiceIds = [];
     for (let index = 0; index < 12; index++) {
       voiceIds.push(await engine.noteOn({
@@ -179,6 +188,7 @@ button.addEventListener('click', async () => {
       simultaneousVoices: voiceIds.length,
       audioWorkletLoaded: true,
       liveParameterUpdates: 'passed',
+      additionalFilterModes: filterModeChecks,
       oscillator2: 'enabled square at -1 octave',
       noise: 'per-voice pink noise at level 0.2 through shared filter and amp envelope',
       subOscillator: 'enabled square at -1 octave with independent phase per note',
