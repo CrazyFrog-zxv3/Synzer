@@ -8,6 +8,8 @@
     "test:browser": "node scripts/browser-smoke.mjs",
     "bench:wavetable": "node packages/dsp-engine/bench/wavetable-mip-benchmark.js",
     "bench:wavetable-voice": "node packages/dsp-engine/bench/wavetable-voice-benchmark.js",
-    "bench:fm": "node packages/dsp-engine/bench/fm-voice-benchmark.js"
+    "bench:fm": "node packages/dsp-engine/bench/fm-voice-benchmark.js",
+    "bench:delay": "node packages/dsp-engine/bench/stereo-delay-benchmark.js",
+    "bench:reverb": "node packages/dsp-engine/bench/stereo-reverb-benchmark.js"
   }
 }

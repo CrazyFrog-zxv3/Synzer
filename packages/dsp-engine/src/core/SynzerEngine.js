@@ -1,31 +1,4 @@
-import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
-
-export class SynzerEngine {
-  constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, engineId = 'virtual-analog', onError = null } = {}) {
-    this.audioContextFactory = audioContextFactory;
-    this.workletUrl = workletUrl;
-    this.maxVoices = maxVoices;
-    this.engineId = engineId;
-    this.fmParameters = { 'global.master-level': 0.8, 'engine.fm.algorithm': 1, 'engine.fm.feedback': 0, ...Object.fromEntries([1, 2, 3, 4].flatMap((op) => [[`engine.fm.op${op}-ratio`, 1], [`engine.fm.op${op}-level`, op === 1 ? 0.8 : 0.7], [`engine.fm.op${op}-index`, op === 1 ? 0 : 2.5], [`engine.fm.op${op}-attack`, 0.005], [`engine.fm.op${op}-decay`, 0.15], [`engine.fm.op${op}-sustain`, 0.8], [`engine.fm.op${op}-release`, 0.22]])) };
-    if (onError !== null && typeof onError !== 'function') throw new TypeError('onError must be a function when provided.');
-    this.onError = onError;
-    this.context = null;
-    this.node = null;
-    this.initPromise = null;
-    this.resumePromise = null;
-    this.voiceSequence = 0;
-    this.handles = new Map();
-    this.wavetableHandles = new Set();
-    this.noteStacks = new Map();
-    this.lifecycleGeneration = 0;
-    this.processorFailure = null;
-    this.parameters = createDefaultVirtualAnalogParameters();
-  }
-
-  async initialize() {
-    if (this.processorFailure) throw this.processorFailure;
-    if (this.node) {
-      const context = this.context;
+t context = this.context;
       const node = this.node;
       const generation = this.lifecycleGeneration;
       if (!context || context.state === 'closed') {
@@ -103,6 +76,8 @@ export class SynzerEngine {
         assertCurrent();
         this.processorFailure = null;
         node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.engineId === 'fm' ? this.fmParameters : this.parameters });
+        node.port.postMessage({ type: 'SET_EFFECT_PARAMETERS', parameters: this.effectParameters });
+        node.port.postMessage({ type: 'SET_EFFECT_RACK', configuration: this.effectRackConfiguration });
         this.node = node;
       } catch (error) {
         node.disconnect();
@@ -138,6 +113,54 @@ export class SynzerEngine {
     this.fmParameters = { ...this.fmParameters, ...values };
     if (this.engineId === 'fm' && this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.fmParameters });
     return { ...this.fmParameters };
+  }
+
+  getEffectParameters() {
+    return { ...this.effectParameters };
+  }
+
+  getEffectRackConfiguration() {
+    return { order: [...this.effectRackConfiguration.order], enabled: { ...this.effectRackConfiguration.enabled } };
+  }
+
+  setEffectRackConfiguration(configuration = {}) {
+    if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) throw new TypeError('Effect rack configuration must be an object.');
+    for (const key of Object.keys(configuration)) if (key !== 'order' && key !== 'enabled') throw new TypeError(`Unknown effect rack setting: ${key}`);
+    const current = this.effectRackConfiguration;
+    const order = configuration.order ?? current.order;
+    if (!Array.isArray(order) || order.length !== 2 || new Set(order).size !== 2 || !['delay', 'reverb'].every((name) => order.includes(name))) throw new RangeError('Effect rack order must contain delay and reverb exactly once.');
+    const enabled = configuration.enabled ?? {};
+    if (!enabled || typeof enabled !== 'object' || Array.isArray(enabled)) throw new TypeError('Effect rack enabled settings must be an object.');
+    for (const [name, value] of Object.entries(enabled)) {
+      if (!['delay', 'reverb'].includes(name)) throw new TypeError(`Unknown enabled effect module: ${name}`);
+      if (typeof value !== 'boolean') throw new TypeError(`Effect rack enabled.${name} must be a boolean.`);
+    }
+    const next = { order: [...order], enabled: { ...current.enabled, ...enabled } };
+    this.effectRackConfiguration = next;
+    if (this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_EFFECT_RACK', configuration: next });
+    return this.getEffectRackConfiguration();
+  }
+
+  setEffectParameters(values = {}) {
+    if (!values || typeof values !== 'object' || Array.isArray(values)) throw new TypeError('Effect parameters must be an object.');
+    const allowed = new Set(['time', 'feedback', 'mix', 'pingPong', 'roomSize', 'damping', 'reverbMix', 'width', 'preDelayMs', 'earlyLevel', 'modulationRateHz', 'modulationDepthMs']);
+    for (const key of Object.keys(values)) if (!allowed.has(key)) throw new TypeError(`Unknown effect parameter: ${key}`);
+    const next = { ...this.effectParameters, ...values };
+    if (!Number.isFinite(next.time) || next.time < 0.005 || next.time > 2) throw new RangeError('Delay time must be between 0.005 and 2 seconds.');
+    if (!Number.isFinite(next.feedback) || next.feedback < -0.95 || next.feedback > 0.95) throw new RangeError('Delay feedback must be between -0.95 and 0.95.');
+    if (!Number.isFinite(next.mix) || next.mix < 0 || next.mix > 1) throw new RangeError('Delay mix must be between 0 and 1.');
+    if (typeof next.pingPong !== 'boolean') throw new TypeError('Delay pingPong must be a boolean.');
+    if (!Number.isFinite(next.roomSize) || next.roomSize < 0 || next.roomSize > 0.98) throw new RangeError('Reverb roomSize must be between 0 and 0.98.');
+    if (!Number.isFinite(next.damping) || next.damping < 0 || next.damping > 1) throw new RangeError('Reverb damping must be between 0 and 1.');
+    if (!Number.isFinite(next.reverbMix) || next.reverbMix < 0 || next.reverbMix > 1) throw new RangeError('Reverb mix must be between 0 and 1.');
+    if (!Number.isFinite(next.width) || next.width < 0 || next.width > 1) throw new RangeError('Reverb width must be between 0 and 1.');
+    if (!Number.isFinite(next.preDelayMs) || next.preDelayMs < 0 || next.preDelayMs > 200) throw new RangeError('Reverb preDelayMs must be between 0 and 200.');
+    if (!Number.isFinite(next.earlyLevel) || next.earlyLevel < 0 || next.earlyLevel > 1) throw new RangeError('Reverb earlyLevel must be between 0 and 1.');
+    if (!Number.isFinite(next.modulationRateHz) || next.modulationRateHz < 0.05 || next.modulationRateHz > 2) throw new RangeError('Reverb modulationRateHz must be between 0.05 and 2.');
+    if (!Number.isFinite(next.modulationDepthMs) || next.modulationDepthMs < 0 || next.modulationDepthMs > 2) throw new RangeError('Reverb modulationDepthMs must be between 0 and 2.');
+    this.effectParameters = next;
+    if (this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_EFFECT_PARAMETERS', parameters: next });
+    return this.getEffectParameters();
   }
 
   setParameters(values = {}) {

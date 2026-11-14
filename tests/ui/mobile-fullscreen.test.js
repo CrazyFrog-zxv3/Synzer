@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [html, css, js] = await Promise.all([
+const [html, css, js, engineSource] = await Promise.all([
   readFile(new URL('../../index.html', import.meta.url), 'utf8'),
   readFile(new URL('../../styles.css', import.meta.url), 'utf8'),
   readFile(new URL('../../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../../packages/dsp-engine/src/core/SynzerEngine.js', import.meta.url), 'utf8'),
 ]);
 
 test('the top bar exposes an accessible fullscreen toggle connected to the app shell', () => {
@@ -37,4 +38,31 @@ test('mobile fullscreen respects safe areas and dynamic viewport height', () => 
   assert.match(css, /\.fullscreen-toggle\s*\{[^}]*min-height:\s*48px/s);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(html, /viewport-fit=cover/);
+});
+
+
+test('stereo feedback delay exposes real AudioWorklet controls with touch-safe toggles', () => {
+  assert.match(html, /id="delay-time"/);
+  assert.match(html, /id="delay-feedback"/);
+  assert.match(html, /id="delay-mix"/);
+  assert.match(html, /id="delay-ping-pong"/);
+  assert.match(html, /FX 01 · STEREO FEEDBACK DELAY/);
+  assert.match(js, /setEffectParameters\(parameters\)/);
+  assert.match(engineSource, /SET_EFFECT_PARAMETERS/);
+  assert.match(css, /\.route-enable input\s*\{[^}]*width:48px/s);
+});
+
+
+test('stereo algorithm reverb exposes real AudioWorklet controls and independent patch parameters', async () => {
+  assert.match(html, /FX 02 · STEREO ALGORITHM REVERB/);
+  assert.match(html, /id="reverb-room"/);
+  assert.match(html, /id="reverb-damping"/);
+  assert.match(html, /id="reverb-mix"/);
+  assert.match(html, /id="reverb-width"/);
+  assert.match(html, /id="reverb-predelay"/);
+  assert.match(html, /id="reverb-early"/);
+  assert.match(engineSource, /roomSize/);
+  assert.match(engineSource, /reverbMix/);
+  assert.match(js, /reverbControls/);
+  assert.match(engineSource, /reverbMix/);
 });

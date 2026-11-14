@@ -1,10 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { SynzerEngine } from '../src/core/SynzerEngine.js';
-
-function createHarness({ addModule = async () => {}, onError = null, contextFactory } = {}) {
-  const messages = [];
-  const counters = { resume: 0, addModule: 0, connect: 0, disconnect: 0, portClose: 0, contextClose: 0 };
+lose: 0, contextClose: 0 };
   const context = {
     state: 'suspended',
     destination: {},
@@ -65,13 +59,15 @@ test('noteOn and noteOff preserve voice identifiers and message order', async ()
   const h = createHarness();
   try {
     const voiceId = await h.engine.noteOn({ note: 60, frequency: 261.6256, velocity: 0.7, waveform: 'sine' });
-    assert.equal(h.messages.length, 2);
+    assert.equal(h.messages.length, 4);
     assert.equal(h.messages[0].type, 'SET_PARAMETERS');
-    assert.equal(h.messages[1].type, 'NOTE_ON');
-    assert.equal(h.messages[1].voice.id, voiceId);
-    assert.equal(h.messages[1].voice.note, 60);
+    assert.equal(h.messages[1].type, 'SET_EFFECT_PARAMETERS');
+    assert.equal(h.messages[2].type, 'SET_EFFECT_RACK');
+    assert.equal(h.messages[3].type, 'NOTE_ON');
+    assert.equal(h.messages[3].voice.id, voiceId);
+    assert.equal(h.messages[3].voice.note, 60);
     assert.equal(await h.engine.noteOff(voiceId), true);
-    assert.deepEqual(h.messages[2], { type: 'NOTE_OFF', voiceId });
+    assert.deepEqual(h.messages[4], { type: 'NOTE_OFF', voiceId });
     assert.equal(await h.engine.noteOff(voiceId), false);
   } finally { await h.engine.close(); h.restore(); }
 });
@@ -188,9 +184,11 @@ test('parameter updates are validated, retained before initialization and sent t
     assert.equal(h.messages[0].type, 'SET_PARAMETERS');
     assert.equal(h.messages[0].parameters['global.master-level'], 0.4);
     assert.equal(h.messages[0].parameters['engine.virtual-analog.osc-wave'], 'square');
+    assert.equal(h.messages[1].type, 'SET_EFFECT_PARAMETERS');
+    assert.equal(h.messages[2].type, 'SET_EFFECT_RACK');
     h.engine.setParameters({ 'global.master-level': 0.2 });
-    assert.equal(h.messages[1].type, 'SET_PARAMETERS');
-    assert.equal(h.messages[1].parameters['global.master-level'], 0.2);
+    assert.equal(h.messages[3].type, 'SET_PARAMETERS');
+    assert.equal(h.messages[3].parameters['global.master-level'], 0.2);
     assert.throws(() => h.engine.setParameters({ 'global.master-level': 2 }), /range/i);
     assert.equal(h.engine.getParameters()['global.master-level'], 0.2);
   } finally { await h.engine.close(); h.restore(); }
@@ -208,5 +206,52 @@ test('SynzerEngine forwards per-voice wavetable definitions and live morph comma
     assert.equal(h.engine.setWavetableMorph('missing', 0.5), false);
     assert.equal(h.engine.setWavetableMorph(analogVoiceId, 0.5), false);
     assert.throws(() => h.engine.setWavetableMorph(voiceId, -0.1), RangeError);
+  } finally { await h.engine.close(); h.restore(); }
+});
+
+
+test('effect parameters persist before initialization and update the live worklet', async () => {
+  const h = createHarness();
+  try {
+    const before = h.engine.setEffectParameters({ time: 0.5, feedback: 0.7, mix: 0.4, pingPong: true, roomSize: 0.86, damping: 0.62, reverbMix: 0.45, width: 0.9, preDelayMs: 55, earlyLevel: 0.72, modulationRateHz: 0.65, modulationDepthMs: 1.1 });
+    assert.deepEqual(before, { time: 0.5, feedback: 0.7, mix: 0.4, pingPong: true, roomSize: 0.86, damping: 0.62, reverbMix: 0.45, width: 0.9, preDelayMs: 55, earlyLevel: 0.72, modulationRateHz: 0.65, modulationDepthMs: 1.1 });
+    h.engine.setFMParameters({ 'engine.fm.algorithm': 2 });
+    assert.deepEqual(h.engine.getEffectParameters(), before, 'FM edits must not reset the global FX bus');
+    assert.equal(h.messages.length, 0);
+    await h.engine.initialize();
+    assert.equal(h.messages[1].type, 'SET_EFFECT_PARAMETERS');
+    assert.deepEqual(h.messages[1].parameters, before);
+    assert.equal(h.messages[2].type, 'SET_EFFECT_RACK');
+    h.engine.setEffectParameters({ mix: 0.2 });
+    assert.equal(h.messages[3].type, 'SET_EFFECT_PARAMETERS');
+    assert.equal(h.messages[3].parameters.mix, 0.2);
+    assert.equal(h.messages[3].parameters.reverbMix, 0.45);
+    assert.throws(() => h.engine.setEffectParameters({ roomSize: 1 }), /roomSize/i);
+    assert.throws(() => h.engine.setEffectParameters({ reverbMix: -0.1 }), /reverb mix/i);
+    assert.throws(() => h.engine.setEffectParameters({ preDelayMs: 201 }), /preDelayMs/i);
+    assert.throws(() => h.engine.setEffectParameters({ earlyLevel: 1.1 }), /earlyLevel/i);
+    assert.throws(() => h.engine.setEffectParameters({ modulationRateHz: 2.1 }), /modulationRateHz/i);
+    assert.throws(() => h.engine.setEffectParameters({ modulationDepthMs: 2.1 }), /modulationDepthMs/i);
+    assert.throws(() => h.engine.setEffectParameters({ feedback: 1 }), /feedback/i);
+    assert.throws(() => h.engine.setEffectParameters({ reverb: 0.5 }), /unknown effect parameter/i);
+    assert.equal(h.engine.getEffectParameters().feedback, 0.7);
+  } finally { await h.engine.close(); h.restore(); }
+});
+
+
+test('effect rack configuration is retained before initialization and sent to the live worklet', async () => {
+  const h = createHarness();
+  try {
+    const config = h.engine.setEffectRackConfiguration({ order: ['reverb', 'delay'], enabled: { delay: false } });
+    assert.deepEqual(config, { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+    assert.deepEqual(h.engine.getEffectRackConfiguration(), config);
+    await h.engine.initialize();
+    assert.deepEqual(h.messages[2], { type: 'SET_EFFECT_RACK', configuration: config });
+    h.engine.setEffectRackConfiguration({ enabled: { reverb: false } });
+    assert.deepEqual(h.messages[3], { type: 'SET_EFFECT_RACK', configuration: { order: ['reverb', 'delay'], enabled: { delay: false, reverb: false } } });
+    assert.throws(() => h.engine.setEffectRackConfiguration({ order: ['delay', 'delay'] }), /order/i);
+    assert.throws(() => h.engine.setEffectRackConfiguration({ enabled: { delay: 1 } }), /enabled/i);
+    assert.throws(() => h.engine.setEffectRackConfiguration({ enabled: { chorus: true } }), /unknown/i);
+    assert.deepEqual(h.engine.getEffectRackConfiguration().order, ['reverb', 'delay']);
   } finally { await h.engine.close(); h.restore(); }
 });

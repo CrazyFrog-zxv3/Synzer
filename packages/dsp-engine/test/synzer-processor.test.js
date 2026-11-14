@@ -161,3 +161,49 @@ test('AudioWorklet can switch from Virtual Analog to FM without rebuilding the n
   assert.equal(processor.engineId, 'fm');
   assert.equal(processorErrors.length, 0);
 });
+
+
+test('AudioWorklet applies validated stereo delay parameters after every synthesis engine', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: { engineId: 'fm' } });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { time: 0.25, feedback: 0.6, mix: 0.4, pingPong: true } } });
+  assert.deepEqual(processor.delay.getParameters(), { time: 0.25, feedback: 0.6, mix: 0.4, pingPong: true });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { feedback: 1 } } });
+  assert.equal(processorErrors.length, 1);
+  assert.equal(processorErrors[0].commandType, 'SET_EFFECT_PARAMETERS');
+  assert.equal(processor.delay.getParameters().feedback, 0.6);
+  assert.deepEqual(processor.reverb.getParameters(), { roomSize: 0.72, damping: 0.35, mix: 0, width: 0.8, preDelayMs: 0, earlyLevel: 0.65, modulationRateHz: 0.35, modulationDepthMs: 0 });
+});
+
+
+test('AudioWorklet updates the stereo reverb independently from delay controls', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: { engineId: 'fm' } });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { roomSize: 0.88, damping: 0.62, reverbMix: 0.45, width: 0.95, preDelayMs: 48, earlyLevel: 0.82, modulationRateHz: 0.8, modulationDepthMs: 1.25 } } });
+  assert.deepEqual(processor.reverb.getParameters(), { roomSize: 0.88, damping: 0.62, mix: 0.45, width: 0.95, preDelayMs: 48, earlyLevel: 0.82, modulationRateHz: 0.8, modulationDepthMs: 1.25 });
+  assert.equal(processor.delay.getParameters().mix, 0);
+  const left = new Float32Array(256);
+  const right = new Float32Array(256);
+  left[0] = 0.5;
+  processor.process([], [[left, right]]);
+  assert.ok([...left, ...right].every(Number.isFinite));
+  assert.equal(processorErrors.length, 0);
+});
+
+
+test('AudioWorklet routes FX modules in configured order and bypasses disabled modules', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: {} });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { mix: 1, reverbMix: 0 } } });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_RACK', configuration: { order: ['reverb', 'delay'], enabled: { delay: false } } } });
+  assert.deepEqual(processor.effectRack.getConfiguration(), { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+  const left = new Float32Array(128);
+  const right = new Float32Array(128);
+  left[0] = 0.25;
+  processor.process([], [[left, right]]);
+  assert.ok([...left, ...right].every(Number.isFinite));
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_RACK', configuration: { order: ['delay', 'delay'] } } });
+  assert.equal(processorErrors.length, 1);
+  assert.equal(processorErrors[0].commandType, 'SET_EFFECT_RACK');
+  assert.deepEqual(processor.effectRack.getConfiguration(), { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+});
