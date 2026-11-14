@@ -1076,3 +1076,35 @@ test('identical Wavetable definitions reuse an immutable mip bank across voices'
   const bankB = engine.voices.get('cached-wt-b').wavetableOscillators[0].bank;
   assert.strictEqual(bankA, bankB);
 });
+
+
+test('live Unison voice-count changes preserve existing wavetable lane phases', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.osc-source': 'wavetable',
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-detune': 24,
+  });
+  engine.noteOn({
+    id: 'wavetable-unison-resize',
+    note: 60,
+    frequency: 440,
+    envelope: FAST_ENVELOPE,
+    wavetable: { size: 256, partials: [{ harmonic: 1, amplitude: 1 }] },
+  });
+  render(engine, 512);
+  const fourLanePhases = engine.getVoice('wavetable-unison-resize').unison.oscillator1Phases;
+  assert.ok(new Set(fourLanePhases.map((phase) => phase.toFixed(8))).size > 1,
+    'detuned wavetable lanes should have independent phase progress');
+
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 2 });
+  const twoLanePhases = engine.getVoice('wavetable-unison-resize').unison.oscillator1Phases;
+  assert.deepEqual(twoLanePhases, fourLanePhases.slice(0, 2),
+    'shrinking Unison must retain the surviving lane phases');
+
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 4 });
+  const restoredPhases = engine.getVoice('wavetable-unison-resize').unison.oscillator1Phases;
+  assert.deepEqual(restoredPhases.slice(0, 2), twoLanePhases,
+    'growing Unison must retain existing lanes');
+  assert.ok(restoredPhases.every(Number.isFinite));
+});
