@@ -1,12 +1,13 @@
 import { createPatch, validatePatch, serializePatch, deserializePatch } from './PatchSchema.js';
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
 import { createDefaultFMParameters } from './FMVoiceEngine.js';
+import { normalizeEffectRackConfiguration as normalizeRackConfiguration } from './EffectRack.js';
 
 export const PATCH_STORAGE_KEY = 'synzer.patches.v1';
 
 const DEFAULT_EFFECT_PARAMETERS = Object.freeze({ time: 0.375, feedback: 0.28, mix: 0, pingPong: false, roomSize: 0.72, damping: 0.35, reverbMix: 0, width: 0.8, preDelayMs: 0, earlyLevel: 0.65, modulationRateHz: 0.35, modulationDepthMs: 0 });
-const DEFAULT_EFFECT_RACK = Object.freeze({ order: ['delay', 'reverb'], enabled: { delay: true, reverb: true } });
-const EFFECT_RACK_IDS = Object.freeze({ order: 'global.fx-rack-order', delay: 'global.fx-rack-delay-enabled', reverb: 'global.fx-rack-reverb-enabled' });
+const DEFAULT_EFFECT_RACK = Object.freeze({ mode: 'serial', order: ['delay', 'reverb'], enabled: { delay: true, reverb: true }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 });
+const EFFECT_RACK_IDS = Object.freeze({ mode: 'global.fx-rack-mode', order: 'global.fx-rack-order', delay: 'global.fx-rack-delay-enabled', reverb: 'global.fx-rack-reverb-enabled', delaySend: 'global.fx-rack-delay-send', delayReturn: 'global.fx-rack-delay-return', reverbSend: 'global.fx-rack-reverb-send', reverbReturn: 'global.fx-rack-reverb-return', dryLevel: 'global.fx-rack-dry-level', wetLevel: 'global.fx-rack-wet-level' });
 const EFFECT_PARAMETER_IDS = Object.freeze({
   time: 'global.fx-delay-time',
   feedback: 'global.fx-delay-feedback',
@@ -42,23 +43,21 @@ function normalizeEffectParameters(input = {}) {
 }
 
 function normalizeEffectRackConfiguration(input = {}) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Effect rack configuration must be an object.');
-  const order = input.order ?? DEFAULT_EFFECT_RACK.order;
-  const enabled = input.enabled ?? {};
-  if (!Array.isArray(order) || order.length !== 2 || new Set(order).size !== 2 || !['delay', 'reverb'].every((name) => order.includes(name))) throw new RangeError('Effect rack order must contain delay and reverb exactly once.');
-  if (!enabled || typeof enabled !== 'object' || Array.isArray(enabled)) throw new TypeError('Effect rack enabled settings must be an object.');
-  for (const [name, value] of Object.entries(enabled)) {
-    if (!['delay', 'reverb'].includes(name)) throw new TypeError(`Unknown effect rack module: ${name}`);
-    if (typeof value !== 'boolean') throw new TypeError(`Effect rack enabled.${name} must be a boolean.`);
-  }
-  return { order: [...order], enabled: { ...DEFAULT_EFFECT_RACK.enabled, ...enabled } };
+  return normalizeRackConfiguration(input, DEFAULT_EFFECT_RACK);
 }
 
 function addEffectRackConfiguration(globalParameters, input) {
   const rack = normalizeEffectRackConfiguration(input);
+  globalParameters[EFFECT_RACK_IDS.mode] = rack.mode;
   globalParameters[EFFECT_RACK_IDS.order] = rack.order.join(',');
   globalParameters[EFFECT_RACK_IDS.delay] = rack.enabled.delay;
   globalParameters[EFFECT_RACK_IDS.reverb] = rack.enabled.reverb;
+  globalParameters[EFFECT_RACK_IDS.delaySend] = rack.levels.delay.send;
+  globalParameters[EFFECT_RACK_IDS.delayReturn] = rack.levels.delay.return;
+  globalParameters[EFFECT_RACK_IDS.reverbSend] = rack.levels.reverb.send;
+  globalParameters[EFFECT_RACK_IDS.reverbReturn] = rack.levels.reverb.return;
+  globalParameters[EFFECT_RACK_IDS.dryLevel] = rack.dryLevel;
+  globalParameters[EFFECT_RACK_IDS.wetLevel] = rack.wetLevel;
   return globalParameters;
 }
 
@@ -161,10 +160,17 @@ export function applyPatchEffectRackConfiguration(input) {
   const global = patch.globalParameters;
   const orderValue = global[EFFECT_RACK_IDS.order];
   const order = typeof orderValue === 'string' ? orderValue.split(',') : DEFAULT_EFFECT_RACK.order;
-  return normalizeEffectRackConfiguration({ order, enabled: {
-    delay: global[EFFECT_RACK_IDS.delay] ?? true,
-    reverb: global[EFFECT_RACK_IDS.reverb] ?? true,
-  } });
+  return normalizeEffectRackConfiguration({
+    mode: global[EFFECT_RACK_IDS.mode] ?? 'serial',
+    order,
+    enabled: { delay: global[EFFECT_RACK_IDS.delay] ?? true, reverb: global[EFFECT_RACK_IDS.reverb] ?? true },
+    levels: {
+      delay: { send: global[EFFECT_RACK_IDS.delaySend] ?? 1, return: global[EFFECT_RACK_IDS.delayReturn] ?? 1 },
+      reverb: { send: global[EFFECT_RACK_IDS.reverbSend] ?? 1, return: global[EFFECT_RACK_IDS.reverbReturn] ?? 1 },
+    },
+    dryLevel: global[EFFECT_RACK_IDS.dryLevel] ?? 1,
+    wetLevel: global[EFFECT_RACK_IDS.wetLevel] ?? 1,
+  });
 }
 
 export function applyPatchEffectParameters(input) {

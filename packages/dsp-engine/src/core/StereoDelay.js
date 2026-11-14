@@ -60,7 +60,7 @@ export class StereoDelay {
     return buffer[index] + ((buffer[next] - buffer[index]) * fraction);
   }
 
-  process(left, right = left, { bypass = false } = {}) {
+  process(left, right = left, { bypass = false, wetOnly = false } = {}) {
     if (!(left instanceof Float32Array) || !(right instanceof Float32Array) || left.length !== right.length) {
       throw new TypeError('StereoDelay expects matching Float32Array channel buffers.');
     }
@@ -75,8 +75,8 @@ export class StereoDelay {
       const feedbackRight = this.pingPong ? delayedLeft : delayedRight;
       this.leftBuffer[this.writeIndex] = dryLeft + (feedbackLeft * this.feedback);
       this.rightBuffer[this.writeIndex] = dryRight + (feedbackRight * this.feedback);
-      left[index] = bypass ? dryLeft : (dryLeft * (1 - this.mix)) + (delayedLeft * this.mix);
-      if (right !== left) right[index] = bypass ? dryRight : (dryRight * (1 - this.mix)) + (delayedRight * this.mix);
+      left[index] = wetOnly ? (bypass ? 0 : delayedLeft) : (bypass ? dryLeft : (dryLeft * (1 - this.mix)) + (delayedLeft * this.mix));
+      if (right !== left) right[index] = wetOnly ? (bypass ? 0 : delayedRight) : (bypass ? dryRight : (dryRight * (1 - this.mix)) + (delayedRight * this.mix));
       this.writeIndex += 1;
       if (this.writeIndex >= this.capacity) this.writeIndex = 0;
     }

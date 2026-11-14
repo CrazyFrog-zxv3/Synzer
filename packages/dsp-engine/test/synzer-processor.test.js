@@ -196,7 +196,7 @@ test('AudioWorklet routes FX modules in configured order and bypasses disabled m
   const processor = new Processor({ processorOptions: {} });
   processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { mix: 1, reverbMix: 0 } } });
   processor.port.onmessage({ data: { type: 'SET_EFFECT_RACK', configuration: { order: ['reverb', 'delay'], enabled: { delay: false } } } });
-  assert.deepEqual(processor.effectRack.getConfiguration(), { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+  assert.deepEqual(processor.effectRack.getConfiguration(), { mode: 'serial', order: ['reverb', 'delay'], enabled: { delay: false, reverb: true }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 });
   const left = new Float32Array(128);
   const right = new Float32Array(128);
   left[0] = 0.25;
@@ -205,5 +205,23 @@ test('AudioWorklet routes FX modules in configured order and bypasses disabled m
   processor.port.onmessage({ data: { type: 'SET_EFFECT_RACK', configuration: { order: ['delay', 'delay'] } } });
   assert.equal(processorErrors.length, 1);
   assert.equal(processorErrors[0].commandType, 'SET_EFFECT_RACK');
-  assert.deepEqual(processor.effectRack.getConfiguration(), { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+  assert.deepEqual(processor.effectRack.getConfiguration(), { mode: 'serial', order: ['reverb', 'delay'], enabled: { delay: false, reverb: true }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 });
+});
+
+test('AudioWorklet applies parallel FX sends and returns without non-finite output', () => {
+  processorErrors.length = 0;
+  const processor = new Processor({ processorOptions: {} });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_PARAMETERS', parameters: { time: 0.005, feedback: 0, mix: 0, reverbMix: 0 } } });
+  processor.port.onmessage({ data: { type: 'SET_EFFECT_RACK', configuration: { mode: 'parallel', levels: { delay: { send: 0.75, return: 0.5 }, reverb: { send: 1.25, return: 0.4 } }, dryLevel: 0.8, wetLevel: 0.9 } } });
+  assert.equal(processor.effectRack.getConfiguration().mode, 'parallel');
+  assert.equal(processor.effectRack.getConfiguration().levels.delay.send, 0.75);
+  processor.port.onmessage({ data: { type: 'NOTE_ON', voice: { id: 'parallel-fx-note', note: 69, frequency: 440, velocity: 1, waveform: 'sine', envelope: { attack: 0, decay: 0, sustain: 1, release: 0.1 } } } });
+  const left = new Float32Array(256);
+  const right = new Float32Array(256);
+  left[0] = 0.5;
+  right[0] = 0.25;
+  processor.process([], [[left, right]]);
+  assert.ok([...left, ...right].every(Number.isFinite));
+  assert.ok(left.some((sample) => sample !== 0));
+  assert.equal(processorErrors.length, 0);
 });

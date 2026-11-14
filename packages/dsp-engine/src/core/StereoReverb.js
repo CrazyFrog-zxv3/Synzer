@@ -130,7 +130,7 @@ export class StereoReverb {
     return this.getParameters();
   }
 
-  process(left, right = left, { bypass = false } = {}) {
+  process(left, right = left, { bypass = false, wetOnly = false } = {}) {
     if (!(left instanceof Float32Array) || !(right instanceof Float32Array) || left.length !== right.length) {
       throw new TypeError('StereoReverb expects matching Float32Array channel buffers.');
     }
@@ -172,8 +172,8 @@ export class StereoReverb {
       const rawWetR = (reverberantR * wetGain) + (earlyR * this.earlyLevel * 0.5);
       const wetL = (rawWetL * wet1) + (rawWetR * wet2);
       const wetR = (rawWetR * wet1) + (rawWetL * wet2);
-      left[i] = bypass ? dryL : (dryL * (1 - this.mix)) + (wetL * this.mix);
-      if (right !== left) right[i] = bypass ? dryR : (dryR * (1 - this.mix)) + (wetR * this.mix);
+      left[i] = wetOnly ? (bypass ? 0 : wetL) : (bypass ? dryL : (dryL * (1 - this.mix)) + (wetL * this.mix));
+      if (right !== left) right[i] = wetOnly ? (bypass ? 0 : wetR) : (bypass ? dryR : (dryR * (1 - this.mix)) + (wetR * this.mix));
       this.modulationPhase += phaseIncrement;
       if (this.modulationPhase >= Math.PI * 2) this.modulationPhase -= Math.PI * 2;
     }

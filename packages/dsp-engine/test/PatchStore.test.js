@@ -310,7 +310,7 @@ test('legacy patches without FX metadata restore safe stereo delay defaults', ()
 
 
 test('Virtual Analog and FM patches persist FX rack order and independent bypass flags', () => {
-  const rack = { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } };
+  const rack = { mode: 'parallel', order: ['reverb', 'delay'], enabled: { delay: false, reverb: true }, levels: { delay: { send: 0.65, return: 0.4 }, reverb: { send: 1.25, return: 0.8 } }, dryLevel: 0.9, wetLevel: 0.75 };
   const vaPatch = createVirtualAnalogPatch({}, 'Rack VA', {}, rack);
   const fmPatch = createFMEnginePatch({}, 'Rack FM', {}, rack);
   assert.deepEqual(applyPatchEffectRackConfiguration(vaPatch), rack);
@@ -327,10 +327,11 @@ test('legacy patches without FX rack fields receive the safe serial defaults', (
   delete patch.globalParameters['global.fx-rack-order'];
   delete patch.globalParameters['global.fx-rack-delay-enabled'];
   delete patch.globalParameters['global.fx-rack-reverb-enabled'];
-  assert.deepEqual(applyPatchEffectRackConfiguration(patch), { order: ['delay', 'reverb'], enabled: { delay: true, reverb: true } });
+  assert.deepEqual(applyPatchEffectRackConfiguration(patch), { mode: 'serial', order: ['delay', 'reverb'], enabled: { delay: true, reverb: true }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 });
 });
 
 test('FX rack patch configuration rejects invalid order and non-boolean bypass values', () => {
   assert.throws(() => createVirtualAnalogPatch({}, 'Invalid Order', {}, { order: ['delay', 'delay'] }), /order/i);
   assert.throws(() => createFMEnginePatch({}, 'Invalid Bypass', {}, { enabled: { delay: 1 } }), /boolean/i);
+  assert.throws(() => createFMEnginePatch({}, 'Invalid Send', {}, { levels: { delay: { send: -0.1 } } }), /send/i);
 });

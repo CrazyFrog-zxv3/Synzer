@@ -249,15 +249,33 @@ test('effect rack configuration is retained before initialization and sent to th
   const h = createHarness();
   try {
     const config = h.engine.setEffectRackConfiguration({ order: ['reverb', 'delay'], enabled: { delay: false } });
-    assert.deepEqual(config, { order: ['reverb', 'delay'], enabled: { delay: false, reverb: true } });
+    assert.deepEqual(config, { mode: 'serial', order: ['reverb', 'delay'], enabled: { delay: false, reverb: true }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 });
     assert.deepEqual(h.engine.getEffectRackConfiguration(), config);
     await h.engine.initialize();
     assert.deepEqual(h.messages[2], { type: 'SET_EFFECT_RACK', configuration: config });
     h.engine.setEffectRackConfiguration({ enabled: { reverb: false } });
-    assert.deepEqual(h.messages[3], { type: 'SET_EFFECT_RACK', configuration: { order: ['reverb', 'delay'], enabled: { delay: false, reverb: false } } });
+    assert.deepEqual(h.messages[3], { type: 'SET_EFFECT_RACK', configuration: { mode: 'serial', order: ['reverb', 'delay'], enabled: { delay: false, reverb: false }, levels: { delay: { send: 1, return: 1 }, reverb: { send: 1, return: 1 } }, dryLevel: 1, wetLevel: 1 } });
     assert.throws(() => h.engine.setEffectRackConfiguration({ order: ['delay', 'delay'] }), /order/i);
     assert.throws(() => h.engine.setEffectRackConfiguration({ enabled: { delay: 1 } }), /enabled/i);
     assert.throws(() => h.engine.setEffectRackConfiguration({ enabled: { chorus: true } }), /unknown/i);
     assert.deepEqual(h.engine.getEffectRackConfiguration().order, ['reverb', 'delay']);
+  } finally { await h.engine.close(); h.restore(); }
+});
+
+test('parallel FX rack configuration is validated, retained and sent to a live worklet', async () => {
+  const h = createHarness();
+  try {
+    const config = h.engine.setEffectRackConfiguration({ mode: 'parallel', levels: { delay: { send: 0.7, return: 0.4 }, reverb: { send: 1.2, return: 0.8 } }, dryLevel: 0.85, wetLevel: 0.65 });
+    assert.equal(config.mode, 'parallel');
+    assert.equal(config.levels.delay.send, 0.7);
+    assert.equal(config.levels.reverb.return, 0.8);
+    await h.engine.initialize();
+    assert.deepEqual(h.messages[2], { type: 'SET_EFFECT_RACK', configuration: config });
+    h.engine.setEffectRackConfiguration({ levels: { delay: { send: 0.9 } } });
+    assert.equal(h.messages[3].configuration.levels.delay.send, 0.9);
+    assert.equal(h.messages[3].configuration.levels.delay.return, 0.4);
+    assert.throws(() => h.engine.setEffectRackConfiguration({ mode: 'matrix' }), /mode/i);
+    assert.throws(() => h.engine.setEffectRackConfiguration({ levels: { reverb: { return: 2.1 } } }), /return/i);
+    assert.equal(h.engine.getEffectRackConfiguration().mode, 'parallel');
   } finally { await h.engine.close(); h.restore(); }
 });

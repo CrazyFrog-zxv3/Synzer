@@ -35,7 +35,7 @@ See [docs/DESIGN-DIRECTION.md](docs/DESIGN-DIRECTION.md) for the visual principl
 
 The visual waveform scope is a schematic illustration of the selected oscillator shape, not a live audio analyzer.
 
-The current engines are Virtual Analog, Wavetable and four-operator FM. Additive, granular, sample-based, spectral and physical-modeling engines remain planned. Os parâmetros do Delay e do Reverb são armazenados como parâmetros globais opcionais em patches v1; patches legados recebem defaults seguros. Arpeggiator, step sequencer, MIDI I/O, sample import/recording, convolução/IR, early reflections geometricamente modeladas, BPM sync, ducking e roteamento paralelo, sends/returns e conexões modulares livres permanecem trabalho futuro. O rack serial atual já permite inverter a ordem Delay/Reverb e bypass independente por módulo.
+The current engines are Virtual Analog, Wavetable and four-operator FM. Additive, granular, sample-based, spectral and physical-modeling engines remain planned. Os parâmetros do Delay e do Reverb são armazenados como parâmetros globais opcionais em patches v1; patches legados recebem defaults seguros. Arpeggiator, step sequencer, MIDI I/O, sample import/recording, convolução/IR, early reflections geometricamente modeladas, BPM sync, ducking e conexões modulares livres permanecem trabalho futuro. O FX Rack agora oferece cadeia serial compatível e barramento paralelo com sends/returns e compensação de ganho declarada.
 
 ## Validation boundary
 
@@ -47,5 +47,5 @@ The Android/Termux launcher and full original test/documentation package remain 
 
 - FX 01 Stereo Feedback Delay: tempo fracionário, feedback bipolar, wet/dry e ping-pong.
 - FX 02 Stereo Algorithm Reverb: predelay de 0–200 ms, reflexões iniciais estéreo independentes e cauda Schroeder com quatro combs amortecidos, duas etapas all-pass por canal e modulação lenta interpolada opcional.
-- Ambos os efeitos rodam após o motor de síntese no AudioWorklet e seus parâmetros são persistidos em patches VA/FM. O FX Rack permite ordem serial configurável e bypass independente, também persistidos nos patches.
+- Ambos os efeitos rodam após o motor de síntese no AudioWorklet e seus parâmetros são persistidos em patches VA/FM. O FX Rack permite cadeia serial configurável ou roteamento paralelo com sends/returns, ganho dry/wet e bypass independente; toda a configuração é persistida nos patches.
 - Limitação: o Reverb atual não é convolutivo e não carrega IRs.

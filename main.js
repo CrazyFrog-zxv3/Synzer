@@ -572,20 +572,50 @@ const reverbControls = {
   modulationRateHz: document.querySelector('#reverb-mod-rate'),
   modulationDepthMs: document.querySelector('#reverb-mod-depth'),
 };
+const fxRackMode = document.querySelector('#fx-rack-mode');
+const fxRackModeValue = document.querySelector('#fx-rack-mode-value');
 const fxRackOrder = document.querySelector('#fx-rack-order');
 const fxRackOrderValue = document.querySelector('#fx-rack-order-value');
+const fxRackOrderHint = fxRackOrder.closest('.control').querySelector('.control-hint');
+const delayMixHint = delayControls.mix.closest('.control').querySelector('.control-hint');
+const reverbMixHint = reverbControls.reverbMix.closest('.control').querySelector('.control-hint');
 const fxRackDelayEnabled = document.querySelector('#fx-rack-delay-enabled');
 const fxRackReverbEnabled = document.querySelector('#fx-rack-reverb-enabled');
+const fxRackControls = Object.fromEntries(['delay-send', 'delay-return', 'reverb-send', 'reverb-return', 'dry-level', 'wet-level'].map((key) => [key, document.querySelector(`#fx-rack-${key}`)]));
+const fxRackOutputs = Object.fromEntries(Object.keys(fxRackControls).map((key) => [key, document.querySelector(`#fx-rack-${key}-value`)]));
 function applyEffectRackConfiguration() {
   const order = fxRackOrder.value.split(',');
+  const percent = (key) => Number(fxRackControls[key].value) / 100;
+  const configuration = {
+    mode: fxRackMode.value,
+    order,
+    enabled: { delay: fxRackDelayEnabled.checked, reverb: fxRackReverbEnabled.checked },
+    levels: {
+      delay: { send: percent('delay-send'), return: percent('delay-return') },
+      reverb: { send: percent('reverb-send'), return: percent('reverb-return') },
+    },
+    dryLevel: percent('dry-level'),
+    wetLevel: percent('wet-level'),
+  };
+  fxRackModeValue.textContent = fxRackMode.value.toUpperCase();
   fxRackOrderValue.textContent = order.map((name) => name.toUpperCase()).join(' → ');
-  try {
-    engine.setEffectRackConfiguration({ order, enabled: { delay: fxRackDelayEnabled.checked, reverb: fxRackReverbEnabled.checked } });
-  } catch (error) { message.textContent = `FX Rack rejeitado: ${error.message}`; }
+  const parallel = fxRackMode.value === 'parallel';
+  fxRackOrder.disabled = parallel;
+  fxRackOrderHint.textContent = parallel ? 'No modo paralelo, cada efeito recebe o sinal dry original; a ordem não altera o fluxo.' : 'A ordem altera como os módulos alimentam um ao outro.';
+  for (const control of Object.values(fxRackControls)) control.disabled = !parallel;
+  delayControls.mix.disabled = parallel;
+  reverbControls.reverbMix.disabled = parallel;
+  delayMixHint.textContent = parallel ? 'Em paralelo, use DELAY RETURN no FX Rack.' : 'Mistura linear entre sinal direto e ecos.';
+  reverbMixHint.textContent = parallel ? 'Em paralelo, use REVERB RETURN no FX Rack.' : 'Mistura independente do delay.';
+  for (const [key, control] of Object.entries(fxRackControls)) fxRackOutputs[key].textContent = `${control.value}%`;
+  try { engine.setEffectRackConfiguration(configuration); }
+  catch (error) { message.textContent = `FX Rack rejeitado: ${error.message}`; }
 }
+fxRackMode.addEventListener('change', applyEffectRackConfiguration);
 fxRackOrder.addEventListener('change', applyEffectRackConfiguration);
 fxRackDelayEnabled.addEventListener('change', applyEffectRackConfiguration);
 fxRackReverbEnabled.addEventListener('change', applyEffectRackConfiguration);
+for (const control of Object.values(fxRackControls)) control.addEventListener('input', applyEffectRackConfiguration);
 
 const reverbOutputs = {
   roomSize: document.querySelector('#reverb-room-value'),
@@ -886,9 +916,16 @@ loadPatchButton.addEventListener('click', () => {
     const effectParameters = applyPatchEffectParameters(patch);
     syncDelayControls(effectParameters);
     const rackConfiguration = applyPatchEffectRackConfiguration(patch);
+    fxRackMode.value = rackConfiguration.mode;
     fxRackOrder.value = rackConfiguration.order.join(',');
     fxRackDelayEnabled.checked = rackConfiguration.enabled.delay;
     fxRackReverbEnabled.checked = rackConfiguration.enabled.reverb;
+    fxRackControls['delay-send'].value = String(Math.round(rackConfiguration.levels.delay.send * 100));
+    fxRackControls['delay-return'].value = String(Math.round(rackConfiguration.levels.delay.return * 100));
+    fxRackControls['reverb-send'].value = String(Math.round(rackConfiguration.levels.reverb.send * 100));
+    fxRackControls['reverb-return'].value = String(Math.round(rackConfiguration.levels.reverb.return * 100));
+    fxRackControls['dry-level'].value = String(Math.round(rackConfiguration.dryLevel * 100));
+    fxRackControls['wet-level'].value = String(Math.round(rackConfiguration.wetLevel * 100));
     applyEffectRackConfiguration();
     if (patch.engineSlots[0]?.engineId === 'fm') {
       const fmParameters = applyFMEnginePatch(patch);

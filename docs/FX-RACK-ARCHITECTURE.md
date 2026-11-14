@@ -1,48 +1,66 @@
-# SYNZER FX Rack — routing foundation
+# SYNZER FX Rack — serial and parallel routing
 
-**Status:** serial routing with configurable module order and per-module bypass is implemented on `feature/synth-filter-modes-v0.1.0`.
+**Status:** serial insert routing and two-module parallel send/return routing are implemented on `feature/synth-filter-modes-v0.1.0`.
 
-## Current signal path
+## Signal path
 
 `Synthesis engine → FX Rack → output`
 
-The rack currently owns two persistent modules:
+The rack owns two persistent processors:
 
 1. `delay` — Stereo Feedback Delay
 2. `reverb` — Stereo Algorithm Reverb
 
-The default order is Delay → Reverb. The user can switch to Reverb → Delay. Each module can be bypassed independently without clearing its internal delay/reverb memory or changing its parameter values. Bypass is transparent at the output, but the processor continues ingesting audio and advancing its feedback/diffusion state. This avoids frozen tails and stale-state jumps when re-enabled.
+The default remains the original serial chain, Delay → Reverb. Reverb → Delay is also supported. In serial mode, the modules retain their original wet/dry behavior and configured order.
+
+Parallel mode feeds an independent copy of the original dry signal to each effect. Each processor exposes a wet-only output path; the rack sums those returns with one separately controlled dry path. This avoids duplicating the dry signal once per effect. The order selector remains stored in parallel mode but does not create inter-effect routing there.
 
 ## Runtime contract
 
-- `EffectRack` receives already-created processors and routes the same channel buffers through enabled modules in configured order.
-- The process method validates matching `Float32Array` channel buffers and preserves mono operation.
-- The audio callback does not allocate new channel buffers or routing arrays.
-- Configuration updates are validated atomically. The order must contain `delay` and `reverb` exactly once; bypass flags must be booleans.
+- `EffectRack` validates matching `Float32Array` channel buffers and preserves mono operation.
+- Serial mode preserves the established processing contract.
+- Parallel mode owns reusable sum and branch scratch buffers. They are allocated on the first block or when block size changes, not per sample or per steady-state block.
+- Each effect receives the original dry input multiplied by its own send level. Its wet-only output is multiplied by its return level and added to the wet bus.
+- A bypassed module still processes its input and advances delay/feedback/diffusion state, but its return is omitted.
+- Configuration updates are validated atomically. Mode is `serial` or `parallel`; order contains both modules exactly once; bypass flags are booleans; send/return and dry/wet gains are finite values from 0 to 2.
 - `SynzerEngine.setEffectRackConfiguration()` stores settings before initialization and sends `SET_EFFECT_RACK` to the AudioWorklet when live.
 - The worklet keeps the rack separate from synthesis-engine selection, so VA, Wavetable and FM share the same global effects bus.
+
+### Parallel gain budget
+
+The parallel bus uses the deterministic coefficient:
+
+`normalization = 1 / max(1, dryLevel + wetLevel × Σ(send × return))`
+
+The coefficient scales the dry and wet contributions together so their declared unity-gain budget does not grow merely because another send is enabled. It is gain-budget compensation, not a brickwall limiter or a true-peak guarantee: an effect can generate internal peaks above unity, and downstream output protection is not implemented.
 
 ## Patch format
 
 Rack settings are stored in the global patch parameter map:
 
+- `global.fx-rack-mode`: `serial` or `parallel`
 - `global.fx-rack-order`: `delay,reverb` or `reverb,delay`
-- `global.fx-rack-delay-enabled`: boolean
-- `global.fx-rack-reverb-enabled`: boolean
+- `global.fx-rack-delay-enabled`, `global.fx-rack-reverb-enabled`: booleans
+- `global.fx-rack-delay-send`, `global.fx-rack-delay-return`
+- `global.fx-rack-reverb-send`, `global.fx-rack-reverb-return`
+- `global.fx-rack-dry-level`, `global.fx-rack-wet-level`
 
-VA and FM patches both support these fields. Patches created before this feature receive safe defaults: Delay → Reverb, both enabled.
+VA and FM patches persist the complete rack configuration. Older patches without these fields restore the safe serial defaults, with both modules enabled and all levels at unity.
 
 ## User interface
 
-The FILTER CHAMBER exposes PROCESS ORDER and independent enable switches for FX 01 and FX 02. Existing effect controls and DSP algorithms remain unchanged.
+The FILTER CHAMBER exposes routing mode, serial order, independent module enable switches, Delay/Reverb sends and returns, and global dry/wet bus levels. The controls are connected to the live engine and round-trip through saved patches.
 
 ## Explicit limitations
 
-This is a serial rack, not a modular patch-cable graph. Parallel sends/returns, per-slot gain, wet-only send architecture, feedback routing between modules, additional effect types, per-effect automation, modulation destinations and MIDI/host automation are not implemented. Parallel routing is intentionally deferred until a separate wet/dry contract and gain-compensation strategy can be tested without changing the current sound unexpectedly.
+- Parallel routing currently supports the two built-in effects only.
+- No arbitrary modular graph, feedback routing between effects, sidechain/ducking, per-effect automation, modulation destinations, MIDI/host automation, BPM sync or convolution/IR loading.
+- The headroom coefficient is not a limiter. Peak protection and loudness-matched auditioning remain future work.
+- Reverb remains algorithmic, not convolutional or geometrically modeled.
 
 ## Validation
 
-- Unit tests cover order, bypass, invalid configuration atomicity and mono buffer behavior. Bypass-specific DSP tests verify that Delay continues writing its ring buffer and Reverb continues feeding its diffusion network while output remains dry.
-- Integration tests cover engine API and AudioWorklet configuration messages.
-- Patch tests cover VA/FM round-trip and legacy defaults.
-- Browser smoke test verifies UI order/bypass, saving, changing and restoring the rack in an FM patch.
+- Unit tests cover serial ordering, bypass state continuity, parallel wet-only summing, independent sends/returns, gain-budget normalization, invalid configuration atomicity, mono buffers and repeated block processing.
+- Integration tests exercise real Delay/Reverb processors and AudioWorklet parallel routing.
+- Patch tests cover VA/FM round-trip, parallel settings and legacy defaults.
+- Chromium smoke test exercises mode switching, all six gain controls, FM audio, patch save/change/restore and responsive viewports.

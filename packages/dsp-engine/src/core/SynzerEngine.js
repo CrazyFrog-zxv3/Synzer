@@ -1,4 +1,5 @@
 import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+import { normalizeEffectRackConfiguration } from './EffectRack.js';
 
 export class SynzerEngine {
   constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, engineId = 'virtual-analog', onError = null } = {}) {
@@ -6,7 +7,7 @@ export class SynzerEngine {
     this.workletUrl = workletUrl;
     this.maxVoices = maxVoices;
     this.engineId = engineId;
-    this.effectRackConfiguration = { order: ['delay', 'reverb'], enabled: { delay: true, reverb: true } };
+    this.effectRackConfiguration = normalizeEffectRackConfiguration({});
     this.effectParameters = { time: 0.375, feedback: 0.28, mix: 0, pingPong: false, roomSize: 0.72, damping: 0.35, reverbMix: 0, width: 0.8, preDelayMs: 0, earlyLevel: 0.65, modulationRateHz: 0.35, modulationDepthMs: 0 };
     this.fmParameters = { 'global.master-level': 0.8, 'engine.fm.algorithm': 1, 'engine.fm.feedback': 0, ...Object.fromEntries([1, 2, 3, 4].flatMap((op) => [[`engine.fm.op${op}-ratio`, 1], [`engine.fm.op${op}-level`, op === 1 ? 0.8 : 0.7], [`engine.fm.op${op}-index`, op === 1 ? 0 : 2.5], [`engine.fm.op${op}-attack`, 0.005], [`engine.fm.op${op}-decay`, 0.15], [`engine.fm.op${op}-sustain`, 0.8], [`engine.fm.op${op}-release`, 0.22]])) };
     if (onError !== null && typeof onError !== 'function') throw new TypeError('onError must be a function when provided.');
@@ -149,22 +150,11 @@ export class SynzerEngine {
   }
 
   getEffectRackConfiguration() {
-    return { order: [...this.effectRackConfiguration.order], enabled: { ...this.effectRackConfiguration.enabled } };
+    return normalizeEffectRackConfiguration({}, this.effectRackConfiguration);
   }
 
   setEffectRackConfiguration(configuration = {}) {
-    if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) throw new TypeError('Effect rack configuration must be an object.');
-    for (const key of Object.keys(configuration)) if (key !== 'order' && key !== 'enabled') throw new TypeError(`Unknown effect rack setting: ${key}`);
-    const current = this.effectRackConfiguration;
-    const order = configuration.order ?? current.order;
-    if (!Array.isArray(order) || order.length !== 2 || new Set(order).size !== 2 || !['delay', 'reverb'].every((name) => order.includes(name))) throw new RangeError('Effect rack order must contain delay and reverb exactly once.');
-    const enabled = configuration.enabled ?? {};
-    if (!enabled || typeof enabled !== 'object' || Array.isArray(enabled)) throw new TypeError('Effect rack enabled settings must be an object.');
-    for (const [name, value] of Object.entries(enabled)) {
-      if (!['delay', 'reverb'].includes(name)) throw new TypeError(`Unknown enabled effect module: ${name}`);
-      if (typeof value !== 'boolean') throw new TypeError(`Effect rack enabled.${name} must be a boolean.`);
-    }
-    const next = { order: [...order], enabled: { ...current.enabled, ...enabled } };
+    const next = normalizeEffectRackConfiguration(configuration, this.effectRackConfiguration);
     this.effectRackConfiguration = next;
     if (this.node && !this.processorFailure) this.node.port.postMessage({ type: 'SET_EFFECT_RACK', configuration: next });
     return this.getEffectRackConfiguration();

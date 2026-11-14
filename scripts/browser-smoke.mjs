@@ -383,11 +383,21 @@ try {
   await fmUiPage.locator('#delay-feedback').evaluate((input) => { input.value = '55'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await fmUiPage.locator('#delay-mix').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await fmUiPage.locator('#delay-ping-pong').check();
+  await fmUiPage.locator("#reverb-mix").fill("45");
   await fmUiPage.locator('#fx-rack-order').selectOption('reverb,delay');
+  await fmUiPage.locator('#fx-rack-mode').selectOption('parallel');
+  assert.equal(await fmUiPage.locator('#fx-rack-order').isDisabled(), true);
+  assert.equal(await fmUiPage.locator('#delay-mix').isDisabled(), true);
+  assert.equal(await fmUiPage.locator('#reverb-mix').isDisabled(), true);
   await fmUiPage.locator('#fx-rack-delay-enabled').uncheck();
+  await fmUiPage.locator('#fx-rack-delay-send').fill('65');
+  await fmUiPage.locator('#fx-rack-delay-return').fill('40');
+  await fmUiPage.locator('#fx-rack-reverb-send').fill('125');
+  await fmUiPage.locator('#fx-rack-reverb-return').fill('80');
+  await fmUiPage.locator('#fx-rack-dry-level').fill('90');
+  await fmUiPage.locator('#fx-rack-wet-level').fill('75');
   await fmUiPage.locator('#reverb-room').fill('86');
   await fmUiPage.locator('#reverb-damping').fill('62');
-  await fmUiPage.locator('#reverb-mix').fill('45');
   await fmUiPage.locator('#reverb-width').fill('90');
   await fmUiPage.locator('#reverb-predelay').fill('48');
   await fmUiPage.locator('#reverb-early').fill('82');
@@ -405,7 +415,14 @@ try {
   assert.equal(await fmUiPage.locator('#reverb-early').inputValue(), '82');
   assert.equal(await fmUiPage.locator('#reverb-mod-rate').inputValue(), '0.82');
   assert.equal(await fmUiPage.locator('#reverb-mod-depth').inputValue(), '1.15');
+  assert.equal(await fmUiPage.locator('#fx-rack-mode').inputValue(), 'parallel');
   assert.equal(await fmUiPage.locator('#fx-rack-order').inputValue(), 'reverb,delay');
+  assert.equal(await fmUiPage.locator('#fx-rack-delay-send').inputValue(), '65');
+  assert.equal(await fmUiPage.locator('#fx-rack-delay-return').inputValue(), '40');
+  assert.equal(await fmUiPage.locator('#fx-rack-reverb-send').inputValue(), '125');
+  assert.equal(await fmUiPage.locator('#fx-rack-reverb-return').inputValue(), '80');
+  assert.equal(await fmUiPage.locator('#fx-rack-dry-level').inputValue(), '90');
+  assert.equal(await fmUiPage.locator('#fx-rack-wet-level').inputValue(), '75');
   assert.equal(await fmUiPage.locator('#fx-rack-delay-enabled').isChecked(), false);
   assert.equal(await fmUiPage.locator('#fx-rack-reverb-enabled').isChecked(), true);
   assert.equal(await fmUiPage.locator('#reverb-mod-rate').inputValue(), '0.82');
@@ -450,7 +467,14 @@ try {
   assert.equal(savedFMPatch.globalParameters['global.fx-reverb-early-level'], 0.82);
   assert.equal(savedFMPatch.globalParameters['global.fx-reverb-modulation-rate'], 0.82);
   assert.equal(savedFMPatch.globalParameters['global.fx-reverb-modulation-depth'], 1.15);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-mode'], 'parallel');
   assert.equal(savedFMPatch.globalParameters['global.fx-rack-order'], 'reverb,delay');
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-delay-send'], 0.65);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-delay-return'], 0.4);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-reverb-send'], 1.25);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-reverb-return'], 0.8);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-dry-level'], 0.9);
+  assert.equal(savedFMPatch.globalParameters['global.fx-rack-wet-level'], 0.75);
   assert.equal(savedFMPatch.globalParameters['global.fx-rack-delay-enabled'], false);
   assert.equal(savedFMPatch.globalParameters['global.fx-rack-reverb-enabled'], true);
   await fmUiPage.locator('#fm-algorithm').scrollIntoViewIfNeeded();
@@ -461,6 +485,10 @@ try {
   await fmUiPage.locator('#delay-feedback').evaluate((input) => { input.value = '-20'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await fmUiPage.locator('#delay-mix').evaluate((input) => { input.value = '5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await fmUiPage.locator('#delay-ping-pong').uncheck();
+  await fmUiPage.locator('#fx-rack-mode').selectOption('serial');
+  assert.equal(await fmUiPage.locator('#fx-rack-order').isDisabled(), false);
+  assert.equal(await fmUiPage.locator('#delay-mix').isDisabled(), false);
+  assert.equal(await fmUiPage.locator('#reverb-mix').isDisabled(), false);
   await fmUiPage.locator('#fx-rack-order').selectOption('delay,reverb');
   await fmUiPage.locator('#fx-rack-delay-enabled').check();
   await fmUiPage.locator('#fx-rack-reverb-enabled').uncheck();
@@ -518,7 +546,7 @@ try {
       'FM 4 operadores iniciou no AudioWorklet pelo teclado',
       'Algoritmos, feedback, ratio, index e envelopes FM responderam aos controles',
       'Delay estéreo global recebeu tempo, feedback, wet/dry e ping-pong pelo painel FX',
-      'Patch FM, parâmetros dos FX 01/02 e roteamento do FX Rack foram salvos, alterados e restaurados',
+      'Patch FM, parâmetros FX e roteamento paralelo com sends/returns foram salvos, alterados e restaurados',
       'Fullscreen nativo entrou/saiu corretamente e fallback imersivo saiu pelo Escape',
       'Paisagem 844×390 usa seis etapas em faixa horizontal, módulos em duas colunas e alvos de toque de 48 px',
       'Painel FM sem overflow horizontal em retrato e paisagem',

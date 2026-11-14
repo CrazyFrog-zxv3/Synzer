@@ -308,3 +308,7 @@ The local patch-store regression suite also verifies JSON save/load round-trips 
 ### Parâmetros globais do barramento FX
 
 Os parâmetros do Stereo Feedback Delay são opcionais em patches schema v1 e ficam no escopo global: `global.fx-delay-time` (0.005–2 s), `global.fx-delay-feedback` (-0.95–0.95), `global.fx-delay-mix` (0–1) e `global.fx-delay-ping-pong` (boolean). Patches legados sem esses IDs recebem os defaults do FX 01. O carregamento os restaura no barramento global e não os repassa aos parâmetros internos dos motores VA/FM.
+
+### FX Rack routing configuration
+
+The global patch map also stores the FX Rack routing state: `global.fx-rack-mode` (`serial` or `parallel`), `global.fx-rack-order`, per-module enable flags, Delay/Reverb send and return gains, and global dry/wet bus levels. Send, return, dry and wet gains are normalized linear values from 0 to 2. In parallel mode, each effect receives an independent copy of the original dry signal and returns wet-only audio to the rack; in serial mode the original insert-chain behavior remains unchanged. Patches predating these fields load with serial routing, Delay → Reverb, both effects enabled, and all gains at unity.
