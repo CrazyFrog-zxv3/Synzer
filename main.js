@@ -366,12 +366,13 @@ blackKeys.forEach(({ offset, left, label }) => {
   keyboard.append(createKey(60 + offset, 'black', left, 7.5, label));
 });
 
-// The editor tabs are navigation only; future DSP modules are clearly marked as planned.
-document.querySelectorAll('[data-tab]').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.tab;
+// Signal-stage navigation changes the visible module without changing the DSP contract.
+document.querySelectorAll('[data-tab]').forEach((stage) => {
+  stage.addEventListener('click', () => {
+    const target = stage.dataset.tab;
     document.querySelectorAll('[data-tab]').forEach((item) => {
-      item.setAttribute('aria-selected', String(item === tab));
+      if (item === stage) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
     });
     document.querySelectorAll('[data-view]').forEach((view) => {
       view.hidden = view.dataset.view !== target;
