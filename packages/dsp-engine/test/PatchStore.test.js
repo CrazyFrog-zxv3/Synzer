@@ -210,3 +210,9 @@ test('legacy Virtual Analog patches missing Sub pitch routes load with neutral d
   assert.equal(restored['engine.virtual-analog.pitch-env-sub-pitch-enabled'], true);
   assert.equal(restored['engine.virtual-analog.lfo-sub-pitch-enabled'], true);
 });
+
+test('Virtual Analog patches persist Unison stereo spread', () => {
+  const patch = createVirtualAnalogPatch({ 'engine.virtual-analog.unison-spread': 72 }, 'Wide Unison');
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.unison-spread'], 72);
+});

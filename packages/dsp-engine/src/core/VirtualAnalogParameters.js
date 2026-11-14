@@ -37,6 +37,7 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
   defineParameter({ id: 'engine.virtual-analog.lfo-sub-pitch-enabled', type: 'boolean', defaultValue: true }),
   defineParameter({ id: 'engine.virtual-analog.unison-voices', type: 'number', defaultValue: 1, min: 1, max: 4, step: 1, unit: 'voices' }),
   defineParameter({ id: 'engine.virtual-analog.unison-detune', type: 'number', defaultValue: 12, min: 0, max: 50, step: 0.1, unit: 'cents' }),
+  defineParameter({ id: 'engine.virtual-analog.unison-spread', type: 'number', defaultValue: 0, min: 0, max: 100, step: 1, unit: 'percent' }),
   defineParameter({
     id: 'engine.virtual-analog.amp-attack',
     type: 'number',

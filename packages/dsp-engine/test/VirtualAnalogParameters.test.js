@@ -32,6 +32,7 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.lfo-sub-pitch-enabled',
     'engine.virtual-analog.unison-voices',
     'engine.virtual-analog.unison-detune',
+    'engine.virtual-analog.unison-spread',
     'engine.virtual-analog.amp-attack',
     'engine.virtual-analog.amp-decay',
     'engine.virtual-analog.amp-sustain',
@@ -127,6 +128,7 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.lfo-sub-pitch-enabled': true,
     'engine.virtual-analog.unison-voices': 1,
     'engine.virtual-analog.unison-detune': 12,
+    'engine.virtual-analog.unison-spread': 0,
   });
 });
 
@@ -250,4 +252,12 @@ test('Sub pitch modulation depths and route enable flags are typed and bounded',
   assert.equal(values['engine.virtual-analog.lfo-sub-pitch-enabled'], false);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.eg-sub-pitch-amount': 49 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo-sub-pitch-enabled': 1 }), /boolean/i);
+});
+
+test('Unison stereo spread is a bounded percentage with a mono-compatible zero default', () => {
+  const defaults = createDefaultVirtualAnalogParameters();
+  assert.equal(defaults['engine.virtual-analog.unison-spread'], 0);
+  const values = normalizeVirtualAnalogParameters({ 'engine.virtual-analog.unison-spread': 75 });
+  assert.equal(values['engine.virtual-analog.unison-spread'], 75);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.unison-spread': 101 }), /range/i);
 });

@@ -48,6 +48,18 @@ export class TptStateVariableFilter {
     return { ic1eq: this.ic1eq, ic2eq: this.ic2eq };
   }
 
+  copyStateFrom(source) {
+    if (!(source instanceof TptStateVariableFilter)) {
+      throw new TypeError('Filter state source must be a TptStateVariableFilter.');
+    }
+    if (source.sampleRate !== this.sampleRate) {
+      throw new RangeError('Filter state can only be copied between matching sample rates.');
+    }
+    this.ic1eq = source.ic1eq;
+    this.ic2eq = source.ic2eq;
+    return this.getState();
+  }
+
   setParameters(values = {}) {
     if (values === null || typeof values !== 'object' || Array.isArray(values)) {
       throw new TypeError('Filter parameters must be an object.');

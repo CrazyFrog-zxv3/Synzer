@@ -107,6 +107,7 @@ try {
   await page.locator('#sub-octave').selectOption('-2');
   await page.locator('#unison-voices').selectOption('4');
   await page.locator('#unison-detune').evaluate((input) => { input.value = '18.5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#unison-spread').evaluate((input) => { input.value = '65'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab=\"modifiers\"]').click();
   await page.locator('#patch-name').fill('Browser Check');
   await page.locator('#save-patch').click();
@@ -134,6 +135,7 @@ try {
   await page.locator('#sub-octave').selectOption('-1');
   await page.locator('#unison-voices').selectOption('1');
   await page.locator('#unison-detune').evaluate((input) => { input.value = '0'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#unison-spread').evaluate((input) => { input.value = '0'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#master-level').evaluate((input) => {
     input.value = '90';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -180,6 +182,7 @@ try {
   assert.equal(await page.locator('#sub-octave').inputValue(), '-2');
   assert.equal(await page.locator('#unison-voices').inputValue(), '4');
   assert.equal(await page.locator('#unison-detune').inputValue(), '18.5');
+  assert.equal(await page.locator('#unison-spread').inputValue(), '65');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
   assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
@@ -274,7 +277,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, Unison 4-lane com spread estéreo L/R medido, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

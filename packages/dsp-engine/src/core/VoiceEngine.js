@@ -72,7 +72,7 @@ export class VoiceEngine {
     this.defaultOscillator2 = { enabled: false, waveform: 'sine', level: 0.5, octave: 0, semitone: 0, fine: 0 };
     this.defaultNoise = { enabled: false, color: 'white', level: 0.25 };
     this.defaultSub = { enabled: false, waveform: 'square', level: 0.25, octave: -1 };
-    this.defaultUnison = { voices: 1, detune: 12 };
+    this.defaultUnison = { voices: 1, detune: 12, spread: 0 };
     this.defaultEnvelope = { ...DEFAULT_ENVELOPE };
     this.defaultFilterEnvelope = {
       attack: 0.01, decay: 0.3, sustain: 0, release: 0.25, amount: 0,
@@ -102,7 +102,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, sub: { ...voice.sub }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), filterRightState: voice.filterRight.getState(), oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, sub: { ...voice.sub }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, spread: voice.unison.spread, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -138,6 +138,7 @@ export class VoiceEngine {
     this.defaultUnison = {
       voices: this.parameters['engine.virtual-analog.unison-voices'],
       detune: this.parameters['engine.virtual-analog.unison-detune'],
+      spread: this.parameters['engine.virtual-analog.unison-spread'],
     };
     this.defaultEnvelope = {
       attack: this.parameters['engine.virtual-analog.amp-attack'],
@@ -198,12 +199,17 @@ export class VoiceEngine {
       voice.sub.frequency = Math.min(this.sampleRate * 0.45, voice.frequency * (2 ** voice.sub.octave));
       voice.sub.phaseIncrement = voice.sub.frequency / this.sampleRate;
       voice.unison.detune = this.defaultUnison.detune;
+      if (voice.unison.spread > 0 && this.defaultUnison.spread === 0) {
+        voice.filterRight.copyStateFrom(voice.filter);
+      }
+      voice.unison.spread = this.defaultUnison.spread;
       if (voice.unison.voices !== this.defaultUnison.voices) {
         const primaryOsc1Phase = voice.unison.oscillator1Phases[0] ?? voice.phase;
         const primaryOsc2Phase = voice.unison.oscillator2Phases[0] ?? voice.oscillator2.phase;
         voice.unison = {
           voices: this.defaultUnison.voices,
           detune: this.defaultUnison.detune,
+          spread: this.defaultUnison.spread,
           oscillator1Phases: new Float64Array(this.defaultUnison.voices).fill(primaryOsc1Phase),
           oscillator2Phases: new Float64Array(this.defaultUnison.voices).fill(primaryOsc2Phase),
         };
@@ -212,6 +218,7 @@ export class VoiceEngine {
       }
       voice.filterBaseCutoff = filterParameters.cutoff;
       voice.filter.setParameters(filterParameters);
+      voice.filterRight.setParameters(filterParameters);
       voice.lfo.amount = this.defaultLfo.amount;
       voice.lfo.oscillator.setParameters({
         rate: this.defaultLfo.rate,
@@ -262,6 +269,7 @@ export class VoiceEngine {
     const unison = {
       voices: this.defaultUnison.voices,
       detune: this.defaultUnison.detune,
+      spread: this.defaultUnison.spread,
       oscillator1Phases: new Float64Array(this.defaultUnison.voices),
       oscillator2Phases: new Float64Array(this.defaultUnison.voices),
     };
@@ -287,12 +295,14 @@ export class VoiceEngine {
       }),
       amount: this.defaultLfo.amount,
     };
-    const filter = new TptStateVariableFilter({
+    const filterParameters = {
       sampleRate: this.sampleRate,
       mode: this.parameters['engine.virtual-analog.filter-mode'],
       cutoff: this.parameters['engine.virtual-analog.filter-cutoff'],
       resonance: this.parameters['engine.virtual-analog.filter-resonance'],
-    });
+    };
+    const filter = new TptStateVariableFilter(filterParameters);
+    const filterRight = new TptStateVariableFilter(filterParameters);
 
     if (this.activeVoiceCount >= this.maxVoices) {
       if (this.stealTailCount >= this.maxStealTails) throw new Error('Steal-tail capacity reached; retry after the current audio block.');
@@ -304,7 +314,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, pitchEnvelope, lfo, oscillator2, noise, noiseEnabled: this.defaultNoise.enabled, noiseLevel: this.defaultNoise.level, sub, unison,
+      stealRemaining: 0, stealStartLevel: 0, filter, filterRight, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, pitchEnvelope, lfo, oscillator2, noise, noiseEnabled: this.defaultNoise.enabled, noiseLevel: this.defaultNoise.level, sub, unison,
     };
     this.voices.set(id, voice);
     return id;
@@ -560,7 +570,8 @@ export class VoiceEngine {
     const pitchEnvelopeSubPitchAmount = this.modulationMatrix.pitchEnvelopeSubPitchAmount;
     const lfoSubPitchAmount = this.modulationMatrix.lfoSubPitchAmount;
     for (let i = 0; i < left.length; i++) {
-      let mixed = 0;
+      let mixedLeft = 0;
+      let mixedRight = 0;
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
         const voice = renderVoices[voiceIndex];
         this.#advanceEnvelope(voice);
@@ -578,6 +589,7 @@ export class VoiceEngine {
               Math.max(20, voice.filterBaseCutoff * (2 ** (semitones / 12))),
             );
           voice.filter.setCutoff(modulatedCutoff);
+          voice.filterRight.setCutoff(modulatedCutoff);
         }
         // A voice can expire in the middle of this block while its reference remains
         // in the snapshot. Its zero level keeps the remaining samples silent.
@@ -589,6 +601,8 @@ export class VoiceEngine {
         const sub = voice.sub;
         const hasSub = sub.enabled && sub.level > 0;
         let oscillatorSample;
+        let oscillatorSampleLeft;
+        let oscillatorSampleRight;
 
         if (voice.unison.voices === 1) {
           const oscillatorPhaseIncrement1 = osc1PitchSemitones === 0
@@ -603,6 +617,8 @@ export class VoiceEngine {
             const oscillatorSample2 = renderOscillatorSample(oscillator2.waveform, oscillator2.phase, oscillatorPhaseIncrement2);
             oscillatorSample = (oscillatorSample1 + (oscillatorSample2 * oscillator2.level)) / (1 + oscillator2.level);
           }
+          oscillatorSampleLeft = oscillatorSample;
+          oscillatorSampleRight = oscillatorSample;
           voice.phase += oscillatorPhaseIncrement1;
           if (voice.phase >= 1) voice.phase -= 1;
           oscillator2.phase += oscillatorPhaseIncrement2;
@@ -616,6 +632,12 @@ export class VoiceEngine {
           const oscillator2Phases = voice.unison.oscillator2Phases;
           let oscillator1Sum = 0;
           let oscillator2Sum = 0;
+          let oscillator1LeftSum = 0;
+          let oscillator1RightSum = 0;
+          let oscillator2LeftSum = 0;
+          let oscillator2RightSum = 0;
+          const spreadActive = right !== left && laneCount > 1 && voice.unison.spread > 0;
+          const spread = spreadActive ? voice.unison.spread / 100 : 0;
           for (let lane = 0; lane < laneCount; lane++) {
             const position = (lane / (laneCount - 1)) * 2 - 1;
             const detuneSemitones = (position * laneDetune) / 100;
@@ -623,7 +645,13 @@ export class VoiceEngine {
               this.sampleRate * 0.45,
               voice.frequency * (2 ** ((osc1PitchSemitones + detuneSemitones) / 12)),
             ) / this.sampleRate;
-            oscillator1Sum += renderOscillatorSample(voice.waveform, oscillator1Phases[lane], oscillatorPhaseIncrement1);
+            const oscillatorSample1 = renderOscillatorSample(voice.waveform, oscillator1Phases[lane], oscillatorPhaseIncrement1);
+            oscillator1Sum += oscillatorSample1;
+            const pan = position * spread;
+            const leftGain = pan > 0 ? 1 - pan : 1;
+            const rightGain = pan < 0 ? 1 + pan : 1;
+            oscillator1LeftSum += oscillatorSample1 * leftGain;
+            oscillator1RightSum += oscillatorSample1 * rightGain;
             oscillator1Phases[lane] += oscillatorPhaseIncrement1;
             if (oscillator1Phases[lane] >= 1) oscillator1Phases[lane] -= 1;
 
@@ -632,7 +660,10 @@ export class VoiceEngine {
               oscillator2.frequency * (2 ** ((osc2PitchSemitones + detuneSemitones) / 12)),
             ) / this.sampleRate;
             if (hasOscillator2) {
-              oscillator2Sum += renderOscillatorSample(oscillator2.waveform, oscillator2Phases[lane], oscillatorPhaseIncrement2);
+              const oscillatorSample2 = renderOscillatorSample(oscillator2.waveform, oscillator2Phases[lane], oscillatorPhaseIncrement2);
+              oscillator2Sum += oscillatorSample2;
+              oscillator2LeftSum += oscillatorSample2 * leftGain;
+              oscillator2RightSum += oscillatorSample2 * rightGain;
             }
             oscillator2Phases[lane] += oscillatorPhaseIncrement2;
             if (oscillator2Phases[lane] >= 1) oscillator2Phases[lane] -= 1;
@@ -643,6 +674,21 @@ export class VoiceEngine {
           oscillatorSample = hasOscillator2
             ? (oscillatorSample1 + ((oscillator2Sum / laneCount) * oscillator2.level)) / (1 + oscillator2.level)
             : oscillatorSample1;
+          if (spread > 0) {
+            const oscillatorSample1Left = oscillator1LeftSum / laneCount;
+            const oscillatorSample1Right = oscillator1RightSum / laneCount;
+            const oscillatorSample2Left = oscillator2LeftSum / laneCount;
+            const oscillatorSample2Right = oscillator2RightSum / laneCount;
+            oscillatorSampleLeft = hasOscillator2
+              ? (oscillatorSample1Left + (oscillatorSample2Left * oscillator2.level)) / (1 + oscillator2.level)
+              : oscillatorSample1Left;
+            oscillatorSampleRight = hasOscillator2
+              ? (oscillatorSample1Right + (oscillatorSample2Right * oscillator2.level)) / (1 + oscillator2.level)
+              : oscillatorSample1Right;
+          } else {
+            oscillatorSampleLeft = oscillatorSample;
+            oscillatorSampleRight = oscillatorSample;
+          }
         }
 
         let subSample = 0;
@@ -662,23 +708,37 @@ export class VoiceEngine {
         if (hasSub || hasNoise) {
           const oscillator2Level = hasOscillator2 ? oscillator2.level : 0;
           const baseNormalization = 1 + oscillator2Level;
-          let summed = oscillatorSample * baseNormalization;
+          let summedLeft = oscillatorSampleLeft * baseNormalization;
+          let summedRight = oscillatorSampleRight * baseNormalization;
           let normalization = baseNormalization;
           if (hasSub) {
-            summed += subSample * sub.level;
+            summedLeft += subSample * sub.level;
+            summedRight += subSample * sub.level;
             normalization += sub.level;
           }
           if (hasNoise) {
-            summed += voice.noise.nextSample() * voice.noiseLevel;
+            const noiseSample = voice.noise.nextSample() * voice.noiseLevel;
+            summedLeft += noiseSample;
+            summedRight += noiseSample;
             normalization += voice.noiseLevel;
           }
-          oscillatorSample = summed / normalization;
+          oscillatorSampleLeft = summedLeft / normalization;
+          oscillatorSampleRight = summedRight / normalization;
         }
-        const filteredSample = voice.filter.process(oscillatorSample);
-        mixed += filteredSample * voice.velocity * voice.envelopeLevel * voiceGain;
+        const filteredLeft = voice.filter.process(oscillatorSampleLeft);
+        const spreadActive = right !== left && voice.unison.voices > 1 && voice.unison.spread > 0;
+        const filteredRight = spreadActive ? voice.filterRight.process(oscillatorSampleRight) : filteredLeft;
+        const gain = voice.velocity * voice.envelopeLevel * voiceGain;
+        mixedLeft += filteredLeft * gain;
+        mixedRight += filteredRight * gain;
       }
-      left[i] = mixed;
-      if (right !== left) right[i] = mixed;
+      left[i] = mixedLeft;
+      if (right !== left) right[i] = mixedRight;
+    }
+    for (const voice of renderVoices) {
+      if (right === left || voice.unison.voices <= 1 || voice.unison.spread === 0) {
+        voice.filterRight.copyStateFrom(voice.filter);
+      }
     }
   }
 }

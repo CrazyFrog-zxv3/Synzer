@@ -19,9 +19,14 @@ button.addEventListener('click', async () => {
     const firstContext = engine.context;
     if (firstContext.state !== 'running') throw new Error(`AudioContext não está running: ${firstContext.state}`);
 
-    const analyser = firstContext.createAnalyser();
-    analyser.fftSize = 4096;
-    engine.node.connect(analyser);
+    const splitter = firstContext.createChannelSplitter(2);
+    const leftAnalyser = firstContext.createAnalyser();
+    const rightAnalyser = firstContext.createAnalyser();
+    leftAnalyser.fftSize = 4096;
+    rightAnalyser.fftSize = 4096;
+    engine.node.connect(splitter);
+    splitter.connect(leftAnalyser, 0);
+    splitter.connect(rightAnalyser, 1);
 
     engine.setParameters({
       'global.master-level': 0.4,
@@ -49,6 +54,7 @@ button.addEventListener('click', async () => {
       'engine.virtual-analog.lfo-sub-pitch-enabled': true,
       'engine.virtual-analog.unison-voices': 3,
       'engine.virtual-analog.unison-detune': 8,
+      'engine.virtual-analog.unison-spread': 65,
       'engine.virtual-analog.filter-mode': 'lowpass',
       'engine.virtual-analog.filter-cutoff': 2600,
       'engine.virtual-analog.filter-resonance': 2,
@@ -86,10 +92,19 @@ button.addEventListener('click', async () => {
 
     engine.setParameters({ 'global.master-level': 0.25 });
     await new Promise((resolve) => setTimeout(resolve, 220));
-    const samples = new Float32Array(analyser.fftSize);
-    analyser.getFloatTimeDomainData(samples);
-    const rms = Math.sqrt(samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length);
+    const leftSamples = new Float32Array(leftAnalyser.fftSize);
+    const rightSamples = new Float32Array(rightAnalyser.fftSize);
+    leftAnalyser.getFloatTimeDomainData(leftSamples);
+    rightAnalyser.getFloatTimeDomainData(rightSamples);
+    const rms = Math.sqrt(leftSamples.reduce((sum, sample) => sum + sample * sample, 0) / leftSamples.length);
+    const stereoDifferenceRms = Math.sqrt(leftSamples.reduce((sum, sample, index) => {
+      const difference = sample - rightSamples[index];
+      return sum + difference * difference;
+    }, 0) / leftSamples.length);
     if (!Number.isFinite(rms) || rms < 0.0001) throw new Error(`Saída de áudio sem sinal mensurável (RMS=${rms}).`);
+    if (!Number.isFinite(stereoDifferenceRms) || stereoDifferenceRms < 0.00001) {
+      throw new Error(`Unison stereo spread não produziu diferença L/R mensurável (RMS diff=${stereoDifferenceRms}).`);
+    }
 
     for (const voiceId of voiceIds) await engine.noteOff(voiceId);
     await new Promise((resolve) => setTimeout(resolve, 120));
@@ -123,8 +138,8 @@ button.addEventListener('click', async () => {
       throw new Error(`Vazamento de handles após stress: handles=${engine.handles.size}, noteStacks=${engine.noteStacks.size}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 120));
-    analyser.getFloatTimeDomainData(samples);
-    const residualRms = Math.sqrt(samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length);
+    leftAnalyser.getFloatTimeDomainData(leftSamples);
+    const residualRms = Math.sqrt(leftSamples.reduce((sum, sample) => sum + sample * sample, 0) / leftSamples.length);
     if (!Number.isFinite(residualRms) || residualRms > 0.002) {
       throw new Error(`A saída não retornou ao silêncio após as notas: RMS=${residualRms}`);
     }
@@ -167,7 +182,7 @@ button.addEventListener('click', async () => {
       oscillator2: 'enabled square at -1 octave',
       noise: 'per-voice pink noise at level 0.2 through shared filter and amp envelope',
       subOscillator: 'enabled square at -1 octave with independent phase per note',
-      unison: '3 detuned oscillator lanes per note at 8 cents, both oscillators',
+      unison: '3 detuned oscillator lanes per note at 8 cents and 65% stereo spread, both oscillators',
       filterEnvelope: 'EG 02 active at +12 semitones',
       pitchEnvelope: 'EG 03 active at +12/-12 semitones on OSC 01/02',
       lfo: 'LFO 01 sine at 5 Hz and +6 semitones',
@@ -180,6 +195,7 @@ button.addEventListener('click', async () => {
       residualRmsAfterRelease: Number(residualRms.toFixed(7)),
       workletErrors: workletErrors.length,
       measuredRms: Number(rms.toFixed(6)),
+      stereoDifferenceRms: Number(stereoDifferenceRms.toFixed(6)),
       suspendResume: 'passed',
       repeatedClose: 'passed',
       reinitializeAfterClose: 'passed',

@@ -109,6 +109,7 @@ function readSynthParameters() {
     'engine.virtual-analog.lfo-sub-pitch-enabled': document.querySelector('#lfo-sub-pitch-enabled').checked,
     'engine.virtual-analog.unison-voices': Number(document.querySelector('#unison-voices').value),
     'engine.virtual-analog.unison-detune': Number(document.querySelector('#unison-detune').value),
+    'engine.virtual-analog.unison-spread': Number(document.querySelector('#unison-spread').value),
     'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
     'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
     'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
@@ -460,8 +461,15 @@ const noiseLevelOutput = document.querySelector('#noise-level-value');
 const unisonVoices = document.querySelector('#unison-voices');
 const unisonDetune = document.querySelector('#unison-detune');
 const unisonDetuneOutput = document.querySelector('#unison-detune-value');
+const unisonSpread = document.querySelector('#unison-spread');
+const unisonSpreadOutput = document.querySelector('#unison-spread-value');
 noiseEnabled.addEventListener('change', applySynthParameters);
 unisonVoices.addEventListener('change', applySynthParameters);
+unisonSpread.addEventListener('input', () => {
+  unisonSpreadOutput.value = `${unisonSpread.value}%`;
+  unisonSpreadOutput.textContent = unisonSpreadOutput.value;
+  applySynthParameters();
+});
 unisonDetune.addEventListener('input', () => {
   unisonDetuneOutput.value = `${Number(unisonDetune.value).toFixed(1)} cents`;
   unisonDetuneOutput.textContent = unisonDetuneOutput.value;
@@ -617,6 +625,9 @@ loadPatchButton.addEventListener('click', () => {
     unisonDetune.value = String(parameters['engine.virtual-analog.unison-detune']);
     unisonDetuneOutput.value = `${Number(unisonDetune.value).toFixed(1)} cents`;
     unisonDetuneOutput.textContent = unisonDetuneOutput.value;
+    unisonSpread.value = String(parameters['engine.virtual-analog.unison-spread']);
+    unisonSpreadOutput.value = `${unisonSpread.value}%`;
+    unisonSpreadOutput.textContent = unisonSpreadOutput.value;
     filterEnvRouteEnabled.checked = parameters['engine.virtual-analog.filter-env-route-enabled'];
     for (const [id, factor, unit] of [
       ['pitch-env-attack', 1000, 'ms'],

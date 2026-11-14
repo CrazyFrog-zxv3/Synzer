@@ -385,8 +385,9 @@
             <div class="control-grid">
               <div class="control"><div class="control-top"><label for="unison-voices">UNISON VOICES</label></div><select id="unison-voices" aria-label="Unison voices" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px"><option value="1">1 · OFF</option><option value="2">2 VOICES</option><option value="3">3 VOICES</option><option value="4">4 VOICES</option></select></div>
               <div class="control"><div class="control-top"><label for="unison-detune">DETUNE</label><output id="unison-detune-value">12 cents</output></div><input id="unison-detune" type="range" min="0" max="50" step="0.1" value="12"/><p class="control-hint">0–50 cents · distribuição simétrica</p></div>
+              <div class="control"><div class="control-top"><label for="unison-spread">STEREO SPREAD</label><output id="unison-spread-value">0%</output></div><input id="unison-spread" type="range" min="0" max="100" step="1" value="0"/><p class="control-hint">0% central · 100% abre as camadas entre L/R · requer 2–4 vozes</p></div>
             </div>
-            <p class="control-hint" style="margin-top:12px">Unison cria até quatro camadas por nota, aplicadas a OSC 01 e OSC 02. O detune distribui as camadas em torno da afinação central. As fases são independentes e preservadas em mudanças ao vivo; a saída continua mono nesta versão.</p>
+            <p class="control-hint" style="margin-top:12px">Unison cria até quatro camadas por nota, aplicadas a OSC 01 e OSC 02. O detune distribui as camadas em torno da afinação central; Stereo Spread distribui cada camada entre os canais L/R antes do filtro, com filtros TPT independentes por canal. Em 0%, o sinal permanece central e mono-compatível.</p>
           </div>
         </section>
 

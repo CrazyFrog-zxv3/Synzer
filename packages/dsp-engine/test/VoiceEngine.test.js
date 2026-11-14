@@ -871,3 +871,94 @@ test('Sub pitch receives independent LFO modulation without changing OSC01 pitch
   assert.notEqual(modulatedPhase, basePhase, 'Sub phase must reflect its independent pitch route');
   assert.equal(modulated.getVoice('sub-modulated').modulationRoutes.find((route) => route.id === 'lfo-to-sub-pitch').destination, 'sub-oscillator-pitch');
 });
+
+test('Unison stereo spread separates detuned lanes while zero spread stays centered', () => {
+  const centered = createEngine({ voiceGain: 1 });
+  centered.setParameters({
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-detune': 18,
+    'engine.virtual-analog.unison-spread': 0,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 600,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.filter-env-amount': 12,
+  });
+  const wide = createEngine({ voiceGain: 1 });
+  wide.setParameters({
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-detune': 18,
+    'engine.virtual-analog.unison-spread': 100,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 600,
+    'engine.virtual-analog.filter-env-attack': 0,
+    'engine.virtual-analog.filter-env-decay': 0,
+    'engine.virtual-analog.filter-env-sustain': 1,
+    'engine.virtual-analog.filter-env-amount': 12,
+  });
+  addVoice(centered, { id: 'centered', waveform: 'saw', frequency: 220 });
+  addVoice(wide, { id: 'wide', waveform: 'saw', frequency: 220 });
+  const centerLeft = new Float32Array(2048);
+  const centerRight = new Float32Array(2048);
+  const wideLeft = new Float32Array(2048);
+  const wideRight = new Float32Array(2048);
+  centered.render(centerLeft, centerRight);
+  wide.render(wideLeft, wideRight);
+  assert.deepEqual(centerLeft, centerRight, 'zero spread must keep all lanes centered');
+  assert.ok(wideLeft.some((sample, index) => Math.abs(sample - wideRight[index]) > 1e-5),
+    'full spread must produce distinct left and right lane sums');
+  assert.ok([...wideLeft, ...wideRight].every(Number.isFinite));
+});
+
+test('Unison stereo spread changes live without resetting oscillator phases', () => {
+  const engine = createEngine();
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 4, 'engine.virtual-analog.unison-spread': 35 });
+  addVoice(engine, { id: 'spread-live' });
+  render(engine, 64);
+  const before = engine.getVoice('spread-live').unison;
+  engine.setParameters({ 'engine.virtual-analog.unison-spread': 80 });
+  const after = engine.getVoice('spread-live').unison;
+  assert.equal(before.spread, 35);
+  assert.equal(after.spread, 80);
+  assert.deepEqual(after.oscillator1Phases, before.oscillator1Phases);
+  assert.deepEqual(after.oscillator2Phases, before.oscillator2Phases);
+});
+
+
+test('disabling live Unison spread synchronizes stereo filter states without a persistent image', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-spread': 100,
+    'engine.virtual-analog.filter-mode': 'lowpass',
+    'engine.virtual-analog.filter-cutoff': 900,
+  });
+  addVoice(engine, { id: 'spread-collapse', waveform: 'saw' });
+  render(engine, 256);
+  engine.setParameters({ 'engine.virtual-analog.unison-spread': 0 });
+  const { left, right } = render(engine, 256);
+  assert.deepEqual(left, right);
+  const state = engine.getVoice('spread-collapse');
+  assert.deepEqual(state.filterState, state.filterRightState);
+});
+
+test('mono rendering remains centered even when Unison stereo spread is configured', () => {
+  const centered = createEngine({ voiceGain: 1 });
+  const wideSetting = createEngine({ voiceGain: 1 });
+  centered.setParameters({ 'engine.virtual-analog.unison-voices': 4, 'engine.virtual-analog.unison-detune': 18, 'engine.virtual-analog.unison-spread': 0 });
+  wideSetting.setParameters({ 'engine.virtual-analog.unison-voices': 4, 'engine.virtual-analog.unison-detune': 18, 'engine.virtual-analog.unison-spread': 100 });
+  addVoice(centered, { id: 'mono-center', waveform: 'saw', frequency: 220 });
+  addVoice(wideSetting, { id: 'mono-wide', waveform: 'saw', frequency: 220 });
+  const centerMono = new Float32Array(512);
+  const wideMono = new Float32Array(512);
+  centered.render(centerMono);
+  wideSetting.render(wideMono);
+  assert.deepEqual(wideMono, centerMono, 'mono output must fold Unison to its centered image regardless of spread setting');
+});

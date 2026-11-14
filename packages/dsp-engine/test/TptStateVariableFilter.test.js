@@ -99,3 +99,15 @@ test('lookup-based TPT coefficients stay accurate across supported sample rates 
     }
   }
 });
+
+test('filter state can be copied between same-rate channel instances', () => {
+  const left = new TptStateVariableFilter({ sampleRate: 48000, mode: 'lowpass', cutoff: 1200, resonance: 2 });
+  const right = new TptStateVariableFilter({ sampleRate: 48000, mode: 'lowpass', cutoff: 1200, resonance: 2 });
+  for (let index = 0; index < 64; index++) left.process(Math.sin(index * 0.1));
+  right.copyStateFrom(left);
+  assert.deepEqual(right.getState(), left.getState());
+  const next = 0.375;
+  assert.equal(right.process(next), left.process(next));
+  const incompatible = new TptStateVariableFilter({ sampleRate: 44100 });
+  assert.throws(() => incompatible.copyStateFrom(left), /sample rate/i);
+});
