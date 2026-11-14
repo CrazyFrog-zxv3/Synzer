@@ -25,7 +25,7 @@ test('the module rail reads as a sculpted signal instrument, not a flat tab list
   for (const selector of ['.module-rail {', '.module-node {', '.module-node[aria-current="step"]', '.module-node::after']) {
     assert.ok(css.includes(selector), `missing instrument navigation style: ${selector}`);
   }
-  assert.match(css, /grid-template-columns:\s*minmax\(168px,\s*196px\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(css, /grid-template-columns:\s*minmax\(184px,\s*214px\)\s+minmax\(0,\s*1fr\)/);
   assert.match(css, /cubic-bezier\(/);
   assert.match(css, /@keyframes\s+stage-arrive/);
 });
