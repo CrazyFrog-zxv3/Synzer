@@ -132,12 +132,14 @@ The Virtual Analog voice signal path now includes a per-voice topology-preservin
 - `lowpass`: second-order low-pass response.
 - `highpass`: second-order high-pass response.
 - `bandpass`: second-order band-pass response.
+- `notch`: notch response, combining the low-pass and high-pass outputs to reject the cutoff region.
+- `allpass`: all-pass response with approximately unity magnitude and frequency-dependent phase shift.
 
 The filter uses the TPT integrator formulation with precomputed coefficients. Cutoff is constrained to 20–20,000 Hz and internally limited to 45% of the active sample rate to avoid operation at Nyquist. Resonance is represented as Q from 0.5 to 12. Coefficient changes retain the integrator state; they do not reset the filter on every automation update. Each voice owns independent integrator state.
 
 ### Parameter contract
 
-- `engine.virtual-analog.filter-mode`: enum `off|lowpass|highpass|bandpass`, default `off`.
+- `engine.virtual-analog.filter-mode`: enum `off|lowpass|highpass|bandpass|notch|allpass`, default `off`.
 - `engine.virtual-analog.filter-cutoff`: 20–20,000 Hz, default 12,000 Hz.
 - `engine.virtual-analog.filter-resonance`: Q 0.5–12, default approximately 0.707.
 
