@@ -71,6 +71,7 @@ export class VoiceEngine {
     this.defaultWaveform = 'saw';
     this.defaultOscillator2 = { enabled: false, waveform: 'sine', level: 0.5, octave: 0, semitone: 0, fine: 0 };
     this.defaultNoise = { enabled: false, color: 'white', level: 0.25 };
+    this.defaultSub = { enabled: false, waveform: 'square', level: 0.25, octave: -1 };
     this.defaultUnison = { voices: 1, detune: 12 };
     this.defaultEnvelope = { ...DEFAULT_ENVELOPE };
     this.defaultFilterEnvelope = {
@@ -101,7 +102,7 @@ export class VoiceEngine {
 
   getVoice(id) {
     const voice = this.voices.get(id);
-    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
+    return voice ? { ...voice, envelope: { ...voice.envelope }, filterEnvelope: { ...voice.filterEnvelope }, pitchEnvelope: { ...voice.pitchEnvelope }, lfo: { ...voice.lfo.oscillator.getParameters(), amount: voice.lfo.amount, phase: voice.lfo.oscillator.phase }, modulationRoutes: this.modulationMatrix.getRoutes(), oscillator2: { ...voice.oscillator2 }, noise: { enabled: voice.noiseEnabled, color: voice.noise.color, level: voice.noiseLevel }, sub: { ...voice.sub }, unison: { voices: voice.unison.voices, detune: voice.unison.detune, oscillator1Phases: Array.from(voice.unison.oscillator1Phases), oscillator2Phases: Array.from(voice.unison.oscillator2Phases) }, filter: voice.filter.getParameters(), filterState: voice.filter.getState() } : undefined;
   }
 
   getParameters() {
@@ -127,6 +128,12 @@ export class VoiceEngine {
       enabled: this.parameters['engine.virtual-analog.noise-enabled'],
       color: this.parameters['engine.virtual-analog.noise-color'],
       level: this.parameters['engine.virtual-analog.noise-level'],
+    };
+    this.defaultSub = {
+      enabled: this.parameters['engine.virtual-analog.sub-enabled'],
+      waveform: this.parameters['engine.virtual-analog.sub-wave'],
+      level: this.parameters['engine.virtual-analog.sub-level'],
+      octave: this.parameters['engine.virtual-analog.sub-octave'],
     };
     this.defaultUnison = {
       voices: this.parameters['engine.virtual-analog.unison-voices'],
@@ -184,6 +191,9 @@ export class VoiceEngine {
       voice.noiseEnabled = this.defaultNoise.enabled;
       voice.noiseLevel = this.defaultNoise.level;
       voice.noise.setColor(this.defaultNoise.color);
+      Object.assign(voice.sub, this.defaultSub);
+      voice.sub.frequency = Math.min(this.sampleRate * 0.45, voice.frequency * (2 ** voice.sub.octave));
+      voice.sub.phaseIncrement = voice.sub.frequency / this.sampleRate;
       voice.unison.detune = this.defaultUnison.detune;
       if (voice.unison.voices !== this.defaultUnison.voices) {
         const primaryOsc1Phase = voice.unison.oscillator1Phases[0] ?? voice.phase;
@@ -244,6 +254,8 @@ export class VoiceEngine {
       seed: (Math.imul(this.sequence + 1, 0x9e3779b1) >>> 0) || 1,
       color: this.defaultNoise.color,
     });
+    const subFrequency = Math.min(this.sampleRate * 0.45, frequency * (2 ** this.defaultSub.octave));
+    const sub = { ...this.defaultSub, phase: 0, frequency: subFrequency, phaseIncrement: subFrequency / this.sampleRate };
     const unison = {
       voices: this.defaultUnison.voices,
       detune: this.defaultUnison.detune,
@@ -289,7 +301,7 @@ export class VoiceEngine {
       id, note: Math.round(note), frequency, velocity, waveform, phase: 0, phaseIncrement: frequency / this.sampleRate,
       stage: 'attack', envelope: normalizedEnvelope, envelopeLevel: 0,
       stageSamples: 0, startedAt: this.sequence++, releaseStep: 0,
-      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, pitchEnvelope, lfo, oscillator2, noise, noiseEnabled: this.defaultNoise.enabled, noiseLevel: this.defaultNoise.level, unison,
+      stealRemaining: 0, stealStartLevel: 0, filter, filterBaseCutoff: this.parameters['engine.virtual-analog.filter-cutoff'], filterEnvelope, pitchEnvelope, lfo, oscillator2, noise, noiseEnabled: this.defaultNoise.enabled, noiseLevel: this.defaultNoise.level, sub, unison,
     };
     this.voices.set(id, voice);
     return id;
@@ -568,6 +580,8 @@ export class VoiceEngine {
         const oscillator2 = voice.oscillator2;
         const hasOscillator2 = oscillator2.enabled && oscillator2.level > 0;
         const hasNoise = voice.noiseEnabled && voice.noiseLevel > 0;
+        const sub = voice.sub;
+        const hasSub = sub.enabled && sub.level > 0;
         let oscillatorSample;
 
         if (voice.unison.voices === 1) {
@@ -625,10 +639,33 @@ export class VoiceEngine {
             : oscillatorSample1;
         }
 
-        if (hasNoise) {
-          oscillatorSample = ((oscillatorSample * (1 + (hasOscillator2 ? oscillator2.level : 0))) +
-            (voice.noise.nextSample() * voice.noiseLevel)) /
-            (1 + (hasOscillator2 ? oscillator2.level : 0) + voice.noiseLevel);
+        let subSample = 0;
+        if (hasSub) {
+          const subPhaseIncrement = Math.min(
+            this.sampleRate * 0.45,
+            sub.frequency * (2 ** (osc1PitchSemitones / 12)),
+          ) / this.sampleRate;
+          subSample = renderOscillatorSample(sub.waveform, sub.phase, subPhaseIncrement);
+          sub.phase += subPhaseIncrement;
+        } else {
+          sub.phase += sub.phaseIncrement;
+        }
+        if (sub.phase >= 1) sub.phase -= 1;
+
+        if (hasSub || hasNoise) {
+          const oscillator2Level = hasOscillator2 ? oscillator2.level : 0;
+          const baseNormalization = 1 + oscillator2Level;
+          let summed = oscillatorSample * baseNormalization;
+          let normalization = baseNormalization;
+          if (hasSub) {
+            summed += subSample * sub.level;
+            normalization += sub.level;
+          }
+          if (hasNoise) {
+            summed += voice.noise.nextSample() * voice.noiseLevel;
+            normalization += voice.noiseLevel;
+          }
+          oscillatorSample = summed / normalization;
         }
         const filteredSample = voice.filter.process(oscillatorSample);
         mixed += filteredSample * voice.velocity * voice.envelopeLevel * voiceGain;

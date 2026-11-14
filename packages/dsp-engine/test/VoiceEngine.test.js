@@ -801,3 +801,49 @@ test('live unison detune changes preserve every active phase lane', () => {
   assert.deepEqual(after.oscillator2Phases, before.oscillator2Phases);
   assert.equal(after.detune, 24);
 });
+
+test('sub oscillator defaults off and preserves the previous signal bit-for-bit', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  addVoice(baseline, { id: 'sub-base', frequency: 440, waveform: 'sine' });
+  addVoice(candidate, { id: 'sub-candidate', frequency: 440, waveform: 'sine' });
+  assert.deepEqual(render(candidate, 512).left, render(baseline, 512).left);
+  assert.equal(candidate.getVoice('sub-candidate').sub.enabled, false);
+});
+
+test('sub oscillator tracks the note one or two octaves below with an independent phase', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.sub-wave': 'square',
+    'engine.virtual-analog.sub-level': 0.35,
+    'engine.virtual-analog.sub-octave': -1,
+  });
+  addVoice(engine, { id: 'sub-octave', frequency: 440, waveform: 'sine' });
+  const before = engine.getVoice('sub-octave').sub;
+  assert.equal(before.frequency, 220);
+  assert.equal(before.phase, 0);
+  render(engine, 128);
+  const after = engine.getVoice('sub-octave').sub;
+  assert.notEqual(after.phase, before.phase);
+  assert.ok(Number.isFinite(after.phaseIncrement));
+  assert.ok(after.phaseIncrement > 0);
+});
+
+test('live sub oscillator updates preserve phase while changing waveform, level and octave', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({ 'engine.virtual-analog.sub-enabled': true });
+  addVoice(engine, { id: 'sub-live', frequency: 440, waveform: 'sine' });
+  render(engine, 64);
+  const phase = engine.getVoice('sub-live').sub.phase;
+  engine.setParameters({
+    'engine.virtual-analog.sub-wave': 'saw',
+    'engine.virtual-analog.sub-level': 0.6,
+    'engine.virtual-analog.sub-octave': -2,
+  });
+  const updated = engine.getVoice('sub-live').sub;
+  assert.equal(updated.phase, phase);
+  assert.equal(updated.frequency, 110);
+  assert.equal(updated.waveform, 'saw');
+  assert.equal(updated.level, 0.6);
+});

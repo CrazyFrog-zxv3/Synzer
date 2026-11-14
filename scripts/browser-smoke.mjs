@@ -97,6 +97,10 @@ try {
   await page.locator('#noise-enabled').check();
   await page.locator('#noise-color').selectOption('pink');
   await page.locator('#noise-level').evaluate((input) => { input.value = '70'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#sub-enabled').check();
+  await page.locator('#sub-wave').selectOption('saw');
+  await page.locator('#sub-level').evaluate((input) => { input.value = '65'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#sub-octave').selectOption('-2');
   await page.locator('#unison-voices').selectOption('4');
   await page.locator('#unison-detune').evaluate((input) => { input.value = '18.5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab=\"modifiers\"]').click();
@@ -120,6 +124,10 @@ try {
   await page.locator('#noise-enabled').uncheck();
   await page.locator('#noise-color').selectOption('white');
   await page.locator('#noise-level').evaluate((input) => { input.value = '10'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#sub-enabled').uncheck();
+  await page.locator('#sub-wave').selectOption('square');
+  await page.locator('#sub-level').evaluate((input) => { input.value = '10'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#sub-octave').selectOption('-1');
   await page.locator('#unison-voices').selectOption('1');
   await page.locator('#unison-detune').evaluate((input) => { input.value = '0'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#master-level').evaluate((input) => {
@@ -158,6 +166,10 @@ try {
   assert.equal(await page.locator('#noise-enabled').isChecked(), true);
   assert.equal(await page.locator('#noise-color').inputValue(), 'pink');
   assert.equal(await page.locator('#noise-level').inputValue(), '70');
+  assert.equal(await page.locator('#sub-enabled').isChecked(), true);
+  assert.equal(await page.locator('#sub-wave').inputValue(), 'saw');
+  assert.equal(await page.locator('#sub-level').inputValue(), '65');
+  assert.equal(await page.locator('#sub-octave').inputValue(), '-2');
   assert.equal(await page.locator('#unison-voices').inputValue(), '4');
   assert.equal(await page.locator('#unison-detune').inputValue(), '18.5');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
@@ -248,7 +260,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e seis rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e seis rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

@@ -222,7 +222,7 @@ A second independently configured oscillator is now available per voice. Oscilla
 
 When enabled, the two oscillator signals are mixed with level-weighted normalization `(osc1 + osc2 * level) / (1 + level)` before the per-voice filter, preventing the second oscillator from doubling the maximum single-voice amplitude. Both oscillators share the voice amplitude envelope, filter envelope, LFO and filter path. Oscillator 02 defaults disabled, so existing patches retain the exact single-oscillator sound.
 
-The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, unison stacks, phase offset, sub-oscillator or independent oscillator envelopes are implemented yet. The separate white/pink noise generator is documented below.
+The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, phase offset or independent oscillator envelopes are implemented yet. Unison, Sub Oscillator and the separate white/pink Noise Generator are documented below.
 
 
 ## Modulation Matrix v2 · oscillator pitch destinations
@@ -256,3 +256,24 @@ White noise uses a uniform bipolar sequence. Pink mode uses a multi-pole IIR fil
 When noise is disabled or its level is zero, the renderer retains the prior oscillator mix path bit-for-bit. When active, the three sources are linearly summed and normalized by `1 + osc2Level + noiseLevel`, preventing simple additive peak growth. Noise passes through the existing per-voice filter and amplitude envelope; it has no independent pitch or modulation destination yet. Parameters are typed, included in local patches, restored by the UI, and exercised in the Chromium AudioWorklet smoke test with 12 simultaneous voices.
 
 The informational DSP benchmark now includes 12 active pink-noise generators. Desktop timing is not an ARM64/Android performance claim.
+
+
+## Unison · up to four detuned lanes per note
+
+The Virtual Analog engine now supports 1–4 simultaneous oscillator lanes per note. The same lane count and symmetric detune apply to OSC 01 and OSC 02. For N lanes, the detune positions span `−D…+D` cents evenly around the center; each lane has independent phase accumulators. Each oscillator's lanes are averaged before OSC 01/OSC 02 level mixing, preventing simple linear growth in amplitude.
+
+- `unison-voices`: integer 1…4, default 1 (legacy single-lane behavior).
+- `unison-detune`: 0…50 cents, default 12 cents (ignored at one lane).
+
+Changing lane count while notes are active preserves the primary phase and initializes new lanes from it, avoiding a phase reset. Changing detune preserves all existing phase accumulators. The renderer retains the original single-lane code path bit-for-bit when count is 1. Unison is currently mono: no stereo spread/pan is implemented yet. It multiplies oscillator workload per active note, so device profiling on ARM64/Android remains required before increasing default polyphony.
+
+The UI exposes lane count and detune in WAVEFORM; patch save/load and the AudioWorklet smoke scenario cover both parameters. The benchmark now runs 12 notes with three lanes on both oscillators plus pink noise and the existing filter/envelopes/modulation.
+
+
+## Sub Oscillator · independent low-frequency layer
+
+The Virtual Analog engine now provides a dedicated sub oscillator per note, independent from OSC 01/02 and the Unison phase lanes. It supports sine, saw and square waveforms, octave −1 or −2, a linear level control and an enable flag. Square and saw use the same PolyBLEP band-limiting path as the main oscillators.
+
+The sub follows the note frequency one or two octaves below and receives the combined OSC 01 pitch modulation (EG 02, EG 03 and LFO 01). Its phase is independent and preserved when waveform, level or octave changes on active voices. It shares the existing voice filter and amplitude envelope; no separate sub envelope, modulation-matrix destination or stereo spread is implemented.
+
+Defaults: disabled, square, level 0.25, octave −1. Disabled state preserves the prior oscillator signal bit-for-bit. When enabled, Sub is linearly mixed and normalized with OSC 01/02 and Noise. The sub phase advances without rendering a waveform while disabled to avoid unnecessary oscillator work. Parameters are typed and included in local patch save/load; unit tests cover pitch ratio, independent phase, live updates and neutral defaults, while browser smoke covers the UI and patch round-trip.

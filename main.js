@@ -97,6 +97,12 @@ function readSynthParameters() {
     'engine.virtual-analog.noise-enabled': document.querySelector('#noise-enabled').checked,
     'engine.virtual-analog.noise-color': document.querySelector('#noise-color').value,
     'engine.virtual-analog.noise-level': Number(document.querySelector('#noise-level').value) / 100,
+    'engine.virtual-analog.sub-enabled': document.querySelector('#sub-enabled').checked,
+    'engine.virtual-analog.sub-wave': document.querySelector('#sub-wave').value,
+    'engine.virtual-analog.sub-level': Number(document.querySelector('#sub-level').value) / 100,
+    'engine.virtual-analog.sub-octave': Number(document.querySelector('#sub-octave').value),
+    'engine.virtual-analog.unison-voices': Number(document.querySelector('#unison-voices').value),
+    'engine.virtual-analog.unison-detune': Number(document.querySelector('#unison-detune').value),
     'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
     'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
     'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
@@ -389,13 +395,6 @@ updateFilterEnvelopeGraph();
 
 function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-waveform').value) {
   const paths = {
-    sine: 'M0 90 C40 10 80 10 120 9Parameters();
-  });
-}
-updateFilterEnvelopeGraph();
-
-function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-waveform').value) {
-  const paths = {
     sine: 'M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90',
     triangle: 'M0 170 L80 10 L160 170 L240 10 L320 170 L400 10 L480 170 L560 10 L640 170',
     square: 'M0 150 H80 V30 H160 V150 H240 V30 H320 V150 H400 V30 H480 V150 H560 V30 H640',
@@ -466,6 +465,20 @@ noiseColor.addEventListener('change', applySynthParameters);
 noiseLevel.addEventListener('input', () => {
   noiseLevelOutput.value = `${noiseLevel.value}%`;
   noiseLevelOutput.textContent = noiseLevelOutput.value;
+  applySynthParameters();
+});
+
+const subEnabled = document.querySelector('#sub-enabled');
+const subWave = document.querySelector('#sub-wave');
+const subLevel = document.querySelector('#sub-level');
+const subLevelOutput = document.querySelector('#sub-level-value');
+const subOctave = document.querySelector('#sub-octave');
+subEnabled.addEventListener('change', applySynthParameters);
+subWave.addEventListener('change', applySynthParameters);
+subOctave.addEventListener('change', applySynthParameters);
+subLevel.addEventListener('input', () => {
+  subLevelOutput.value = `${subLevel.value}%`;
+  subLevelOutput.textContent = subLevelOutput.value;
   applySynthParameters();
 });
 
@@ -588,6 +601,12 @@ loadPatchButton.addEventListener('click', () => {
     noiseLevel.value = String(Math.round(parameters['engine.virtual-analog.noise-level'] * 100));
     noiseLevelOutput.value = `${noiseLevel.value}%`;
     noiseLevelOutput.textContent = noiseLevelOutput.value;
+    subEnabled.checked = parameters['engine.virtual-analog.sub-enabled'];
+    subWave.value = parameters['engine.virtual-analog.sub-wave'];
+    subLevel.value = String(Math.round(parameters['engine.virtual-analog.sub-level'] * 100));
+    subLevelOutput.value = `${subLevel.value}%`;
+    subLevelOutput.textContent = subLevelOutput.value;
+    subOctave.value = String(parameters['engine.virtual-analog.sub-octave']);
     unisonVoices.value = String(parameters['engine.virtual-analog.unison-voices']);
     unisonDetune.value = String(parameters['engine.virtual-analog.unison-detune']);
     unisonDetuneOutput.value = `${Number(unisonDetune.value).toFixed(1)} cents`;
@@ -692,4 +711,34 @@ try {
 
 document.querySelector('#stop-all').addEventListener('click', () => {
   for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
-  message.textConten
+  message.textContent = 'Notas liberadas. As caudas ADSR continuam até o fim do release.';
+});
+
+setWaveform('saw');
+updateEnvelopeGraph();
+syncHeldKeys();
+
+window.addEventListener('pagehide', async () => {
+  for (const record of activePointers.values()) {
+    record.released = true;
+    record.button.classList.remove('down');
+  }
+  activePointers.clear();
+  syncHeldKeys();
+
+  state.classList.remove('on');
+  stateLabel.textContent = 'ENGINE CLOSING';
+  workletState.textContent = 'CLOSING';
+  message.textContent = 'Fechando o motor de áudio ao sair desta página.';
+
+  try {
+    await engine.close();
+    stateLabel.textContent = 'ENGINE CLOSED · TOUCH TO RESTART';
+    workletState.textContent = 'CLOSED';
+    message.textContent = 'Motor fechado. Ao voltar, toque no teclado para reinicializar o áudio.';
+  } catch (error) {
+    stateLabel.textContent = 'ENGINE CLOSE ERROR';
+    workletState.textContent = 'CLOSE ERROR';
+    message.textContent = `Falha ao fechar o motor: ${error.message}`;
+  }
+});

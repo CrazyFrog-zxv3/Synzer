@@ -25,6 +25,10 @@ export const VIRTUAL_ANALOG_PARAMETER_DEFINITIONS = Object.freeze([
   defineParameter({ id: 'engine.virtual-analog.noise-enabled', type: 'boolean', defaultValue: false }),
   defineParameter({ id: 'engine.virtual-analog.noise-color', type: 'enum', defaultValue: 'white', choices: ['white', 'pink'] }),
   defineParameter({ id: 'engine.virtual-analog.noise-level', type: 'number', defaultValue: 0.25, min: 0, max: 1, step: 0.01, unit: 'linear' }),
+  defineParameter({ id: 'engine.virtual-analog.sub-enabled', type: 'boolean', defaultValue: false }),
+  defineParameter({ id: 'engine.virtual-analog.sub-wave', type: 'enum', defaultValue: 'square', choices: ['sine', 'saw', 'square'] }),
+  defineParameter({ id: 'engine.virtual-analog.sub-level', type: 'number', defaultValue: 0.25, min: 0, max: 1, step: 0.01, unit: 'linear' }),
+  defineParameter({ id: 'engine.virtual-analog.sub-octave', type: 'number', defaultValue: -1, min: -2, max: -1, step: 1, unit: 'octaves' }),
   defineParameter({ id: 'engine.virtual-analog.unison-voices', type: 'number', defaultValue: 1, min: 1, max: 4, step: 1, unit: 'voices' }),
   defineParameter({ id: 'engine.virtual-analog.unison-detune', type: 'number', defaultValue: 12, min: 0, max: 50, step: 0.1, unit: 'cents' }),
   defineParameter({

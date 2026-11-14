@@ -171,3 +171,18 @@ test('Virtual Analog patches persist unison voice count and detune', () => {
   assert.equal(restored['engine.virtual-analog.unison-voices'], 4);
   assert.equal(restored['engine.virtual-analog.unison-detune'], 18.5);
 });
+
+
+test('Virtual Analog patches persist sub oscillator enable, waveform, level and octave', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.sub-wave': 'saw',
+    'engine.virtual-analog.sub-level': 0.65,
+    'engine.virtual-analog.sub-octave': -2,
+  });
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.sub-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.sub-wave'], 'saw');
+  assert.equal(restored['engine.virtual-analog.sub-level'], 0.65);
+  assert.equal(restored['engine.virtual-analog.sub-octave'], -2);
+});
