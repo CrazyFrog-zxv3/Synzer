@@ -1,116 +1,4 @@
-# Synzer Patch and Parameter Contract
-
-Status: implemented as a first schema layer; not yet connected to the instrument UI or persistent preset storage.
-
-## Scope
-
-This contract establishes stable parameter identities and a versioned patch container. It deliberately separates global parameters from parameters owned by a specific engine slot. It does not claim that every listed synthesis family has a runtime engine.
-
-## Parameter definitions
-
-Module: `packages/dsp-engine/src/core/PatchSchema.js`
-
-A parameter definition uses:
-
-- `id`: stable, namespaced identifier. Global IDs use `global.<parameter>`; engine IDs use `engine.<engine-id>.<parameter>`.
-- `type`: `number`, `boolean`, or `enum`.
-- `defaultValue`: a value matching the declared type.
-- `min`, `max`, `step`: optional numeric metadata for number parameters.
-- `choices`: required for enum parameters.
-- `unit`: optional display/unit metadata.
-
-Definitions are immutable. Numeric values must be finite and inside declared bounds. Enum values must match an explicit choice. Boolean values must be booleans. Validation rejects invalid values rather than silently clamping them.
-
-`normalizeParameterValues(definitions, values)` fills missing values from defaults and rejects unknown parameter IDs.
-
-## Patch schema v1
-
-A patch has this shape:
-
-```js
-{
-  schemaVersion: 1,
-  name: 'Init',
-  globalParameters: {
-    'global.master-level': 0.8
-  },
-  engineSlots: [
-    {
-      slotId: 'layer-a',
-      engineId: 'virtual-analog',
-      enabled: true,
-      parameters: {
-        'engine.virtual-analog.osc-wave': 'saw'
-      }
-    }
-  ]
-}
-```
-
-The example is illustrative. Parameter values are not yet connected to DSP controls. The schema validates namespaces and primitive values, slot identity, engine identifier syntax, and version. Runtime availability remains the responsibility of EngineRegistry.
-
-## Serialization
-
-- `createPatch(input)` creates a normalized immutable v1 patch.
-- `validatePatch(input)` validates and returns an immutable snapshot.
-- `serializePatch(patch)` validates before JSON serialization.
-- `deserializePatch(json)` parses and validates; malformed JSON and unsupported schema versions are rejected.
-
-Unknown schema versions are rejected. No automatic migration is implemented yet. A future migration layer must be explicit and tested before old patch versions are rewritten.
-
-## Current limitations
-
-- No UI controls are bound to this contract.
-- No patch browser, save/load storage, import/export UI, or autosave is implemented.
-- No engine parameter definitions are currently registered by the live Virtual Analog engine.
-- No automatic migration exists.
-- The contract is not yet passed through the AudioWorklet or SynzerEngine runtime.
-- The schema validates patch structure, not whether a particular engine is installed or can be instantiated.
-
-## Verification
-
-Unit tests are in `packages/dsp-engine/test/PatchSchema.test.js`. CI run for the implementation commit: pending at the time this document was authored; update this statement only after checking the workflow result.
-
-
-## Virtual Analog parameter registry and runtime integration
-
-Module: `packages/dsp-engine/src/core/VirtualAnalogParameters.js`
-
-The first live parameter set is registered with stable IDs:
-
-- `global.master-level`: linear gain from 0 to 1, default 1.
-- `engine.virtual-analog.osc-wave`: `saw`, `square`, or `sine`, default `saw`.
-- `engine.virtual-analog.amp-attack`: 0 to 30 seconds, default 0.01 s.
-- `engine.virtual-analog.amp-decay`: 0 to 30 seconds, default 0.08 s.
-- `engine.virtual-analog.amp-sustain`: 0 to 1, default 0.75.
-- `engine.virtual-analog.amp-release`: 0 to 60 seconds, default 0.25 s.
-
-These defaults preserve the previous VA envelope and oscillator defaults. Master level multiplies the existing per-voice gain, so its default of 1 does not change the previous output level.
-
-### Runtime path
-
-The UI reads the waveform, ADSR, and master level controls and calls `SynzerEngine.setParameters()`. The engine validates and stores a normalized immutable parameter snapshot. If the Worklet is not initialized, the values are retained and sent immediately after the node is created. Later updates are sent through `SET_PARAMETERS` messages. The AudioWorklet applies them to the live `VoiceEngine`.
-
-- Master level is applied to all active voices on the next render quantum.
-- Waveform and ADSR become defaults for newly triggered voices. Existing voices retain the waveform/envelope with which they started.
-- NOTE_ON messages can still explicitly override waveform or envelope for compatibility with existing callers.
-- Invalid updates are rejected by the DSP engine and surfaced as `ENGINE_ERROR`; the last valid parameter state remains active.
-
-### Verification
-
-Coverage includes parameter definition/defaults, normalization and rejection, VoiceEngine rendering, SynzerEngine pre-init and live message routing, Worklet application and rejection, and a real Chromium audio integration smoke test.
-
-This is the first working parameter path, not a complete patch/preset system. Patch save/load, storage, UI preset management, migration, automation, modulation destinations and multi-engine mixing remain unimplemented.
-
-
-## Local patch storage
-
-Module: `packages/dsp-engine/src/core/PatchStore.js`
-
-The first persistence adapter stores validated v1 patches in browser `localStorage` under `synzer.patches.v1`. The storage module receives a Storage-compatible object, so its behavior can be tested without a browser.
-
-- `createVirtualAnalogPatch(parameters, name)` splits the current parameter snapshot into global and Virtual Analog engine-slot scopes.
-- `savePatch(storage, patch)` validates and serializes a patch. Existing names are rejected case-insensitively rather than silently overwritten.
+e-insensitively rather than silently overwritten.
 - `listPatches(storage)` returns saved patch names.
 - `loadPatch(storage, name)` returns a validated patch.
 - `applyVirtualAnalogPatch(patch)` validates runtime compatibility and produces the normalized parameter snapshot consumed by the engine.
@@ -227,8 +115,17 @@ The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and 
 
 ## Modulation Matrix v2 · oscillator pitch destinations
 
-The Virtual Analog matrix now compiles six fixed routes: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
+The Virtual Analog matrix now compiles eight fixed routes: EG 02 and LFO 01 to filter cutoff and OSC 01/02 pitch, plus EG 03 to OSC 01/02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
 
 Per render quantum, route amounts are snapshotted from the compiled matrix. Per sample, the EG/LFO source values produce separate pitch offsets for each oscillator. The offsets modify phase increments exponentially (`2 ** (semitones / 12)`), with oscillator frequency capped at 45% of sample rate; PolyBLEP receives the modulated increment for discontinuous waveforms. OSC 01 and OSC 02 remain independently routable. No pitch glide/smoothing, dynamic user-created route graph, additional modulation sources, or pitch destinations for future engines are claimed.
 
 New parameter IDs: `eg-osc1-pitch-amount`, `eg-osc1-pitch-enabled`, `lfo-osc1-pitch-amount`, `lfo-osc1-pitch-enabled`, `eg-osc2-pitch-amount`, `eg-osc2-pitch-enabled`, `lfo-osc2-pitch-amount`, `lfo-osc2-pitch-enabled`, all under `engine.virtual-analog.`. Existing PatchStore schema normalizes missing values to neutral defaults, retaining compatibility with earlier local patches.
+
+
+## EG 03 · pitch envelope
+
+EG 03 is an independent per-voice ADSR envelope dedicated to oscillator pitch. It is retriggered on NOTE_ON and released on NOTE_OFF independently from the amplitude envelope and EG 02. Its source identifier in the modulation matrix is `pitch-envelope`.
+
+Parameters: `pitch-env-attack`, `pitch-env-decay`, `pitch-env-sustain`, `pitch-env-release`, plus independent bipolar route amounts and enable flags for OSC 01 and OSC 02. Default route amounts are zero, so legacy patches retain their sound. The pitch contribution is summed with the existing EG 02 and LFO pitch routes before the oscillator phase increment is calculated.
+
+EG 03 does not directly alter filter cutoff or amplitude. No pitch glide, smoothing, velocity-to-envelope modulation, tempo sync, or additional modulation sources are claimed.

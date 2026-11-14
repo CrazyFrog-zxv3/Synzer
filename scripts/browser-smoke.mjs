@@ -1,77 +1,11 @@
-import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
-const server = createServer(async (request, response) => {
-  try {
-    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-    const filePath = path.resolve(root, `.${pathname}`);
-    if (!filePath.startsWith(root + path.sep) && filePath !== root) throw new Error('Invalid path');
-    const body = await readFile(filePath);
-    response.writeHead(200, { 'content-type': mime[path.extname(filePath)] ?? 'application/octet-stream' });
-    response.end(body);
-  } catch {
-    response.writeHead(404);
-    response.end('Not found');
-  }
-});
-
-await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-const address = server.address();
-const baseUrl = `http://127.0.0.1:${address.port}`;
-let browser;
-try {
-  browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  const pageErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-
-  await page.goto(`${baseUrl}/tests/browser/smoke.html`);
-  await page.locator('#run').click();
-  await page.locator('#status[data-status="pass"], #status[data-status="fail"]').waitFor({ timeout: 15000 });
-  const harnessStatus = await page.locator('#status').getAttribute('data-status');
-  const harnessDetails = await page.locator('#details').textContent();
-  assert.equal(harnessStatus, 'pass', `Browser audio harness failed: ${await page.locator('#status').textContent()}\n${harnessDetails}`);
-
-  await page.goto(`${baseUrl}/index.html`);
-  const firstKey = page.locator('#keyboard .key').first();
-  await firstKey.scrollIntoViewIfNeeded();
-  const keyBox = await firstKey.boundingBox();
-  await page.mouse.move(keyBox.x + keyBox.width / 2, keyBox.y + keyBox.height / 2);
-  await page.mouse.down();
-  await page.locator('#message').filter({ hasText: /Nota MIDI 60 ativa/ }).waitFor({ timeout: 15000 });
-  assert.match(await page.locator('#state').textContent(), /ENGINE READY/);
-  await page.mouse.up();
-
-  await page.locator('#master-level').evaluate((input) => {
-    input.value = '42';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await page.locator('[data-wave="square"]').click();
-  await page.locator('#osc2-enabled').check();
-  await page.locator('#osc2-wave').selectOption('square');
-  await page.locator('#osc2-level').evaluate((input) => { input.value = '65'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#osc2-octave').selectOption('-1');
-  await page.locator('#osc2-semitone').evaluate((input) => { input.value = '5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#osc2-fine').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('[data-tab="global"]').click();
-  await page.locator('#filter-mode').selectOption('lowpass');
-  await page.locator('#filter-cutoff').evaluate((input) => { input.value = '500'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-resonance').evaluate((input) => { input.value = '350'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-attack').evaluate((input) => { input.value = '125'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-decay').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-release').evaluate((input) => { input.value = '700'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('[data-tab="matrix"]').click();
-  await page.locator('#filter-env-amount').evaluate((input) => { input.value = '-24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-  await page.locator('#filter-env-route-enabled').uncheck();
-  await page.locator('#lfo1-route-enabled').check();
-  await page.locator('#lfo1-amount').evaluate((input) => { input.value = '15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+15'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-attack').evaluate((input) => { input.value = '20'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-decay').evaluate((input) => { input.value = '120'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sustain').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-release').evaluate((input) => { input.value = '180'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-osc1-amount').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-osc1-enabled').evaluate((input) => { input.checked = false; input.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.locator('#pitch-env-osc2-amount').evaluate((input) => { input.value = '-7'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#eg-osc1-amount').evaluate((input) => { input.value = '12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#eg-osc1-enabled').uncheck();
   await page.locator('#lfo-osc1-amount').evaluate((input) => { input.value = '-5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -148,6 +82,13 @@ try {
   assert.equal(await page.locator('#lfo1-amount').inputValue(), '15');
   assert.equal(await page.locator('#filter-env-route-enabled').isChecked(), false);
   assert.equal(await page.locator('#lfo1-route-enabled').isChecked(), true);
+  assert.equal(await page.locator('#pitch-env-attack').inputValue(), '20');
+  assert.equal(await page.locator('#pitch-env-decay').inputValue(), '120');
+  assert.equal(await page.locator('#pitch-env-sustain').inputValue(), '35');
+  assert.equal(await page.locator('#pitch-env-release').inputValue(), '180');
+  assert.equal(await page.locator('#pitch-env-osc1-amount').inputValue(), '12');
+  assert.equal(await page.locator('#pitch-env-osc1-enabled').isChecked(), false);
+  assert.equal(await page.locator('#pitch-env-osc2-amount').inputValue(), '-7');
   assert.equal(await page.locator('#eg-osc1-amount').inputValue(), '12');
   assert.equal(await page.locator('#eg-osc1-enabled').isChecked(), false);
   assert.equal(await page.locator('#lfo-osc1-amount').inputValue(), '-5');
@@ -215,7 +156,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro e OSC 02, Filter EG, LFO 01, rotas de cutoff e quatro rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro, OSC 02, EG 02, EG 03, LFO 01 e rotas da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

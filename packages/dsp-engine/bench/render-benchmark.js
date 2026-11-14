@@ -34,6 +34,10 @@ engine.setParameters({
   'engine.virtual-analog.eg-osc1-pitch-enabled': true,
   'engine.virtual-analog.lfo-osc2-pitch-amount': -5,
   'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
+  'engine.virtual-analog.pitch-env-osc1-amount': 12,
+  'engine.virtual-analog.pitch-env-osc1-enabled': true,
+  'engine.virtual-analog.pitch-env-osc2-amount': -7,
+  'engine.virtual-analog.pitch-env-osc2-enabled': true,
 });
 
 for (let index = 0; index < voiceCount; index++) {
