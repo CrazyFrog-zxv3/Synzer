@@ -3,23 +3,36 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const css = await readFile(new URL('../../styles.css', import.meta.url), 'utf8');
+const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
 
-test('SYNZER visual system has an original industrial instrument palette', () => {
-  for (const token of [
-    '--synzer-ink',
-    '--synzer-chassis',
-    '--synzer-metal',
-    '--synzer-amber',
-    '--synzer-signal',
-    '--synzer-violet',
-  ]) {
-    assert.match(css, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+test('SYNZER uses an original signal-stage navigator instead of copied synthesizer tabs', () => {
+  assert.match(html, /class="module-rail"/);
+  assert.doesNotMatch(html, /class="editor-tabs"/);
+  const rail = html.match(/<nav class="module-rail"[\s\S]*?<\/nav>/)?.[0] ?? '';
+  assert.ok(rail, 'module rail must exist');
+  for (const label of ['SOURCE BANK', 'VOICE CORE', 'ENVELOPE LAB', 'MOD PATCHBAY', 'MOTION GENERATOR', 'FILTER CHAMBER']) {
+    assert.ok(rail.includes(label), `missing original stage label: ${label}`);
   }
+  for (const id of ['waveform', 'control', 'envelope', 'matrix', 'modifiers', 'global']) {
+    assert.match(rail, new RegExp(`data-tab="${id}"`));
+  }
+  assert.match(rail, /aria-current="step"/);
+  assert.doesNotMatch(rail, />\s*(WAVEFORM|CONTROL|MATRIX|MODIFIERS|GLOBAL)\s*</);
+  assert.doesNotMatch(html, /LAYER EDITOR/);
 });
 
-test('wide layouts use a vertical instrument bank instead of FRMS-like horizontal editor tabs', () => {
-  assert.match(css, /@media\s*\(min-width:\s*721px\)[\s\S]*?\.editor-tabs\s*\{[^}]*flex-direction:\s*column/s);
-  assert.match(css, /\.editor\s*\{[^}]*grid-template-columns:\s*minmax\(132px,\s*168px\)\s+minmax\(0,\s*1fr\)/s);
+test('the module rail reads as a sculpted signal instrument, not a flat tab list', () => {
+  for (const selector of ['.module-rail {', '.module-node {', '.module-node[aria-current="step"]', '.module-node::after']) {
+    assert.ok(css.includes(selector), `missing instrument navigation style: ${selector}`);
+  }
+  assert.match(css, /grid-template-columns:\s*minmax\(168px,\s*196px\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(css, /cubic-bezier\(/);
+  assert.match(css, /@keyframes\s+stage-arrive/);
+});
+
+test('portrait navigation becomes a compact three-by-two module field without horizontal overflow', () => {
+  assert.match(css, /@media\s*\(max-width:\s*720px\)[\s\S]*?\.module-rail\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s);
+  assert.match(css, /overflow-x:\s*hidden/);
 });
 
 test('touch controls retain accessible targets, focus, and reduced-motion support', () => {
@@ -27,9 +40,4 @@ test('touch controls retain accessible targets, focus, and reduced-motion suppor
   assert.match(css, /:focus-visible/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /input\[type="range"\][^{]*\{[^}]*min-height:\s*48px/s);
-});
-
-test('portrait layouts restore a compact horizontal module selector without horizontal page overflow', () => {
-  assert.match(css, /@media\s*\(max-width:\s*720px\)[\s\S]*?\.editor-tabs\s*\{[^}]*flex-direction:\s*row/s);
-  assert.match(css, /overflow-x:\s*hidden/);
 });
