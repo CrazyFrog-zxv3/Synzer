@@ -321,8 +321,15 @@
             </article>
 
             <article class="module">
-              <div class="module-head"><div><h3 class="module-title">SOURCE / WAVEFORM</h3><p class="module-subtitle">Oscilador virtual analógico</p></div><span class="module-tag">ACTIVE</span></div>
-              <div class="wave-picks" aria-label="Selecionar forma de onda">
+              <div class="module-head"><div><h3 class="module-title">OSC 01 · SOURCE / WAVEFORM</h3><p class="module-subtitle">Virtual Analog ou síntese por tabela de ondas</p></div><span class="module-tag">PRIMARY OSC</span></div>
+              <div class="control" style="margin-bottom:10px">
+                <div class="control-top"><label for="osc1-source">OSCILLATOR SOURCE</label><output id="osc1-source-state">VIRTUAL ANALOG</output></div>
+                <select id="osc1-source" aria-label="OSC 01 source" style="width:100%;min-height:44px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="virtual-analog">VIRTUAL ANALOG · POLYBLEP</option>
+                  <option value="wavetable">WAVETABLE · MIP-MAPPED</option>
+                </select>
+              </div>
+              <div id="analog-wave-picks" class="wave-picks" aria-label="Selecionar forma de onda">
                 <button class="wave-pick" type="button" data-wave="saw" aria-pressed="true"><svg viewBox="0 0 42 17"><path d="M1 15 L14 2 L14 15 L27 2 L27 15 L40 2"/></svg>SAW</button>
                 <button class="wave-pick" type="button" data-wave="square" aria-pressed="false"><svg viewBox="0 0 42 17"><path d="M1 14 H7 V3 H20 V14 H27 V3 H40"/></svg>SQUARE</button>
                 <button class="wave-pick" type="button" data-wave="sine" aria-pressed="false"><svg viewBox="0 0 42 17"><path d="M1 9 C5 -1 10 -1 14 9 S23 19 27 9 S36 -1 41 9"/></svg>SINE</button>
@@ -331,9 +338,14 @@
               <select id="waveform" class="visually-hidden" tabindex="-1" aria-hidden="true">
                 <option value="saw">Saw</option><option value="square">Square</option><option value="sine">Sine</option>
               </select>
+              <div id="wavetable-controls" class="control" hidden style="margin-top:10px">
+                <div class="control-top"><label for="wavetable-morph">TABLE MORPH</label><output id="wavetable-morph-value">0%</output></div>
+                <input id="wavetable-morph" type="range" min="0" max="100" step="1" value="0" aria-label="Wavetable morph" />
+                <p class="control-hint">Morph entre três frames harmônicos. A troca de mip acompanha o pitch e cruza níveis sem salto abrupto.</p>
+              </div>
               <div class="spec-list">
-                <div class="spec-row"><span>ENGINE</span><strong>VIRTUAL ANALOG</strong></div>
-                <div class="spec-row"><span>ANTI-ALIAS</span><strong>POLYBLEP</strong></div>
+                <div class="spec-row"><span>ENGINE</span><strong id="osc1-engine-readout">VIRTUAL ANALOG</strong></div>
+                <div class="spec-row"><span>ANTI-ALIAS</span><strong id="osc1-alias-readout">POLYBLEP</strong></div>
                 <div class="spec-row"><span>POLYPHONY</span><strong>12 VOICES</strong></div>
               </div>
             </article>

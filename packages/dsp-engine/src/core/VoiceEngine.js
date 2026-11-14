@@ -5,6 +5,30 @@ import { ModulationMatrix } from './ModulationMatrix.js';
 import { NoiseGenerator } from './NoiseGenerator.js';
 import { createHarmonicWavetableMipBank, WavetableOscillator } from './WavetableOscillator.js';
 
+const WAVETABLE_BANK_CACHE = new Map();
+const MAX_WAVETABLE_BANK_CACHE = 12;
+
+function getCachedWavetableBank(config) {
+  const size = config.size ?? 2048;
+  const cacheKey = JSON.stringify({ size, partials: config.partials ?? null, partialFrames: config.partialFrames ?? null });
+  const cached = WAVETABLE_BANK_CACHE.get(cacheKey);
+  if (cached) {
+    WAVETABLE_BANK_CACHE.delete(cacheKey);
+    WAVETABLE_BANK_CACHE.set(cacheKey, cached);
+    return cached;
+  }
+  const bank = createHarmonicWavetableMipBank({
+    size,
+    ...(config.partials === undefined ? {} : { partials: config.partials }),
+    ...(config.partialFrames === undefined ? {} : { partialFrames: config.partialFrames }),
+  });
+  if (WAVETABLE_BANK_CACHE.size >= MAX_WAVETABLE_BANK_CACHE) {
+    WAVETABLE_BANK_CACHE.delete(WAVETABLE_BANK_CACHE.keys().next().value);
+  }
+  WAVETABLE_BANK_CACHE.set(cacheKey, bank);
+  return bank;
+}
+
 const DEFAULT_ENVELOPE = Object.freeze({ attack: 0.01, decay: 0.08, sustain: 0.75, release: 0.25 });
 const SUPPORTED_WAVEFORMS = new Set(['saw', 'square', 'sine']);
 
@@ -271,11 +295,7 @@ export class VoiceEngine {
       if (typeof input.wavetable !== 'object' || Array.isArray(input.wavetable)) throw new TypeError('wavetable must be an object.');
       wavetableMorph = input.wavetable.morph ?? 0;
       assertFiniteRange('wavetable morph', wavetableMorph, 0, 1);
-      wavetableBank = createHarmonicWavetableMipBank({
-        size: input.wavetable.size ?? 2048,
-        ...(input.wavetable.partials === undefined ? {} : { partials: input.wavetable.partials }),
-        ...(input.wavetable.partialFrames === undefined ? {} : { partialFrames: input.wavetable.partialFrames }),
-      });
+      wavetableBank = getCachedWavetableBank(input.wavetable);
     }
     const oscillator2Frequency = oscillatorFrequency2(frequency, this.defaultOscillator2, this.sampleRate);
     const oscillator2 = {

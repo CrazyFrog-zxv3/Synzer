@@ -278,6 +278,44 @@ try {
   assert.equal(wavetableStatus, 'pass', `Wavetable browser integration failed: ${JSON.stringify(wavetableDetails)}`);
   assert.deepEqual(wavetablePageErrors, [], `Wavetable browser page errors: ${wavetablePageErrors.join('; ')}`);
 
+  const wavetableUiPage = await browser.newPage();
+  const wavetableUiErrors = [];
+  wavetableUiPage.on('pageerror', (error) => wavetableUiErrors.push(error.message));
+  await wavetableUiPage.goto(`${baseUrl}/index.html`);
+  await wavetableUiPage.locator('#osc1-source').selectOption('wavetable');
+  await wavetableUiPage.locator('#wavetable-morph').evaluate((input) => {
+    input.value = '20';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const wavetableKey = wavetableUiPage.locator('.key.white').first();
+  await wavetableKey.hover();
+  await wavetableUiPage.mouse.down();
+  await wavetableUiPage.getByText(/Nota MIDI 60 ativa · WAVETABLE/).waitFor({ timeout: 10000 });
+  await wavetableUiPage.locator('#wavetable-morph').evaluate((input) => {
+    input.value = '65';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wavetableUiPage.mouse.up();
+  await wavetableUiPage.locator('#patch-name').fill('Wavetable UI');
+  await wavetableUiPage.locator('#save-patch').click();
+  await wavetableUiPage.getByText(/Patch \"Wavetable UI\" salvo localmente/).waitFor({ timeout: 5000 });
+  const savedWavetablePatch = await wavetableUiPage.evaluate(() => {
+    const patches = JSON.parse(localStorage.getItem('synzer.patches.v1') ?? '[]');
+    return patches.find((patch) => patch.name === 'Wavetable UI');
+  });
+  assert.equal(savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.osc-source'], 'wavetable');
+  assert.equal(savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.wavetable-morph'], 0.65);
+  await wavetableUiPage.locator('#osc1-source').selectOption('virtual-analog');
+  await wavetableUiPage.locator('#wavetable-morph').evaluate((input) => {
+    input.value = '10';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wavetableUiPage.locator('#patch-select').selectOption('Wavetable UI');
+  await wavetableUiPage.locator('#load-patch').click();
+  assert.equal(await wavetableUiPage.locator('#osc1-source').inputValue(), 'wavetable');
+  assert.equal(await wavetableUiPage.locator('#wavetable-morph').inputValue(), '65');
+  assert.deepEqual(wavetableUiErrors, [], `Wavetable UI page errors: ${wavetableUiErrors.join('; ')}`);
+
   process.stdout.write(JSON.stringify({
     status: 'PASS',
     checks: [
@@ -296,6 +334,8 @@ try {
     audioHarness: JSON.parse(harnessDetails),
     wavetableBrowser: wavetableDetails,
     wavetablePageErrors,
+    wavetableUi: { savedPatchSource: savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.osc-source'], savedMorph: savedWavetablePatch.engineSlots[0].parameters['engine.virtual-analog.wavetable-morph'], restoredSource: await wavetableUiPage.locator('#osc1-source').inputValue(), restoredMorph: await wavetableUiPage.locator('#wavetable-morph').inputValue() },
+    wavetableUiErrors,
     responsiveViewports: viewportResults,
     pageErrors,
   }, null, 2) + '\n');

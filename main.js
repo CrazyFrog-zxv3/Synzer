@@ -1,4 +1,5 @@
 import { SynzerEngine } from './packages/dsp-engine/src/core/SynzerEngine.js';
+import { createDefaultWavetableDefinition } from './packages/dsp-engine/src/core/WavetablePresets.js';
 import {
   createVirtualAnalogPatch,
   applyVirtualAnalogPatch,
@@ -84,10 +85,20 @@ function readWaveform() {
   return document.querySelector('#waveform').value;
 }
 
+function readOscillatorSource() {
+  return document.querySelector('#osc1-source').value;
+}
+
+function readWavetableMorph() {
+  return Number(document.querySelector('#wavetable-morph').value) / 100;
+}
+
 function readSynthParameters() {
   return {
     'global.master-level': Number(document.querySelector('#master-level').value) / 100,
     'engine.virtual-analog.osc-wave': readWaveform(),
+    'engine.virtual-analog.osc-source': readOscillatorSource(),
+    'engine.virtual-analog.wavetable-morph': readWavetableMorph(),
     'engine.virtual-analog.osc2-enabled': document.querySelector('#osc2-enabled').checked,
     'engine.virtual-analog.osc2-wave': document.querySelector('#osc2-wave').value,
     'engine.virtual-analog.osc2-level': Number(document.querySelector('#osc2-level').value) / 100,
@@ -154,6 +165,23 @@ function applySynthParameters() {
   }
 }
 
+function updateWavetableMorphReadout() {
+  const value = document.querySelector('#wavetable-morph').value;
+  const output = document.querySelector('#wavetable-morph-value');
+  output.value = `${value}%`;
+  output.textContent = output.value;
+}
+
+function updateOscillatorSourceUI() {
+  const wavetable = readOscillatorSource() === 'wavetable';
+  document.querySelector('#analog-wave-picks').hidden = wavetable;
+  document.querySelector('#wavetable-controls').hidden = !wavetable;
+  document.querySelector('#osc1-source-state').textContent = wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
+  document.querySelector('#osc1-engine-readout').textContent = wavetable ? 'WAVETABLE' : 'VIRTUAL ANALOG';
+  document.querySelector('#osc1-alias-readout').textContent = wavetable ? 'BAND-LIMITED MIPS' : 'POLYBLEP';
+  updateWaveformScope(readWaveform());
+}
+
 function setWaveform(waveform) {
   const select = document.querySelector('#waveform');
   select.value = waveform;
@@ -167,6 +195,23 @@ function setWaveform(waveform) {
 function updateWaveformScope(waveform) {
   const path = document.querySelector('#wave-path');
   if (!path) return;
+
+  if (readOscillatorSource() === 'wavetable') {
+    const frames = createDefaultWavetableDefinition(readWavetableMorph()).partialFrames;
+    const position = readWavetableMorph() * (frames.length - 1);
+    const frameIndex = Math.min(frames.length - 1, Math.floor(position));
+    const nextIndex = Math.min(frames.length - 1, frameIndex + 1);
+    const mix = position - frameIndex;
+    const sample = (phase, frame) => frame.reduce((sum, partial) => sum + partial.amplitude * Math.sin(2 * Math.PI * partial.harmonic * phase), 0);
+    const values = Array.from({ length: 129 }, (_, index) => {
+      const phase = index / 128;
+      return sample(phase, frames[frameIndex]) * (1 - mix) + sample(phase, frames[nextIndex]) * mix;
+    });
+    const peak = Math.max(0.001, ...values.map(Math.abs));
+    const points = values.map((value, index) => `${index === 0 ? 'M' : 'L'}${(index / 128 * 640).toFixed(1)} ${(90 - value / peak * 70).toFixed(1)}`);
+    path.setAttribute('d', points.join(' '));
+    return;
+  }
 
   if (waveform === 'sine') {
     path.setAttribute('d', 'M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90');
@@ -270,7 +315,7 @@ function createKey(note, kind, left, width, label) {
     try { button.setPointerCapture(event.pointerId); } catch {}
     button.classList.add('down');
 
-    const record = { button, released: false, voiceId: null };
+    const record = { button, released: false, voiceId: null, wavetable: readOscillatorSource() === 'wavetable', initialMorph: readWavetableMorph() };
     activePointers.set(event.pointerId, record);
     syncHeldKeys();
 
@@ -279,8 +324,10 @@ function createKey(note, kind, left, width, label) {
       note,
       frequency: frequencyForMidi(note),
       velocity: 0.85,
+      ...(record.wavetable ? { wavetable: createDefaultWavetableDefinition(record.initialMorph) } : {}),
     }).then(async (voiceId) => {
       record.voiceId = voiceId;
+      if (record.wavetable && readWavetableMorph() !== record.initialMorph) engine.setWavetableMorph(voiceId, readWavetableMorph());
       observeAudioContext(engine.context);
 
       if (record.released) {
@@ -289,7 +336,7 @@ function createKey(note, kind, left, width, label) {
           activePointers.delete(event.pointerId);
         }
       } else {
-        message.textContent = `Nota MIDI ${note} ativa · ${readWaveform().toUpperCase()}`;
+        message.textContent = `Nota MIDI ${note} ativa · ${record.wavetable ? 'WAVETABLE' : readWaveform().toUpperCase()}`;
       }
       syncHeldKeys();
     }).catch((error) => {
@@ -334,6 +381,22 @@ document.querySelectorAll('[data-tab]').forEach((tab) => {
 
 document.querySelectorAll('[data-wave]').forEach((button) => {
   button.addEventListener('click', () => setWaveform(button.dataset.wave));
+});
+
+const osc1Source = document.querySelector('#osc1-source');
+const wavetableMorph = document.querySelector('#wavetable-morph');
+osc1Source.addEventListener('change', () => {
+  updateOscillatorSourceUI();
+  applySynthParameters();
+});
+wavetableMorph.addEventListener('input', () => {
+  updateWavetableMorphReadout();
+  updateWaveformScope(readWaveform());
+  applySynthParameters();
+  const morph = readWavetableMorph();
+  for (const record of activePointers.values()) {
+    if (record.wavetable && record.voiceId && !record.released) engine.setWavetableMorph(record.voiceId, morph);
+  }
 });
 
 for (const [id, unit] of [
@@ -723,6 +786,10 @@ loadPatchButton.addEventListener('click', () => {
       output.textContent = `${input.value}${unit}`;
     }
     updateEnvelopeGraph();
+    osc1Source.value = parameters['engine.virtual-analog.osc-source'];
+    wavetableMorph.value = String(Math.round(parameters['engine.virtual-analog.wavetable-morph'] * 100));
+    updateWavetableMorphReadout();
+    updateOscillatorSourceUI();
     setWaveform(parameters['engine.virtual-analog.osc-wave']);
     engine.setParameters(parameters);
     patchNameInput.value = patch.name;
@@ -745,6 +812,8 @@ document.querySelector('#stop-all').addEventListener('click', () => {
 });
 
 setWaveform('saw');
+updateWavetableMorphReadout();
+updateOscillatorSourceUI();
 updateEnvelopeGraph();
 syncHeldKeys();
 

@@ -11,6 +11,8 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
   assert.deepEqual(ids, [
     'global.master-level',
     'engine.virtual-analog.osc-wave',
+    'engine.virtual-analog.osc-source',
+    'engine.virtual-analog.wavetable-morph',
     'engine.virtual-analog.osc2-enabled',
     'engine.virtual-analog.osc2-wave',
     'engine.virtual-analog.osc2-level',
@@ -74,6 +76,8 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
   assert.deepEqual(createDefaultVirtualAnalogParameters(), {
     'global.master-level': 1,
     'engine.virtual-analog.osc-wave': 'saw',
+    'engine.virtual-analog.osc-source': 'virtual-analog',
+    'engine.virtual-analog.wavetable-morph': 0,
     'engine.virtual-analog.amp-attack': 0.01,
     'engine.virtual-analog.amp-decay': 0.08,
     'engine.virtual-analog.amp-sustain': 0.75,
@@ -142,6 +146,8 @@ test('normalization fills defaults and validates type, scope, range and enum cho
   assert.equal(normalized['engine.virtual-analog.amp-attack'], 0.01);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'global.master-level': 2 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc-wave': 'triangle' }), /choice/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc-source': 'fm' }), /choice/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.wavetable-morph': 1.1 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.wavetable.position': 0.5 }), /unknown/i);
 });
 

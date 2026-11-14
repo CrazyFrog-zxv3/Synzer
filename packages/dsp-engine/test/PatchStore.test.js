@@ -230,3 +230,22 @@ test('Virtual Analog patches preserve all supported TPT filter modes through loc
     assert.equal(restored['engine.virtual-analog.filter-mode'], mode);
   }
 });
+
+test('Virtual Analog patch persists OSC 01 source and Wavetable morph', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.osc-source': 'wavetable',
+    'engine.virtual-analog.wavetable-morph': 0.65,
+  }, 'Wavetable Motion');
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.osc-source'], 'wavetable');
+  assert.equal(restored['engine.virtual-analog.wavetable-morph'], 0.65);
+});
+
+test('legacy patches without OSC source metadata retain the Virtual Analog default', () => {
+  const legacy = JSON.parse(JSON.stringify(createVirtualAnalogPatch({}, 'Legacy Source')));
+  delete legacy.engineSlots[0].parameters['engine.virtual-analog.osc-source'];
+  delete legacy.engineSlots[0].parameters['engine.virtual-analog.wavetable-morph'];
+  const restored = applyVirtualAnalogPatch(legacy);
+  assert.equal(restored['engine.virtual-analog.osc-source'], 'virtual-analog');
+  assert.equal(restored['engine.virtual-analog.wavetable-morph'], 0);
+});

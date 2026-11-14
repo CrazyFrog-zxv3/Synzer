@@ -83,3 +83,26 @@ Wavetable now has a real per-voice render path inside the existing Virtual Analo
 - The audio render loop performs no per-sample buffer allocation; mip selection in the oscillator avoids a per-sample selection-record allocation. Bank construction still occurs on NOTE_ON in the Worklet message handler and may be expensive for many newly triggered Wavetable voices; shared bank caching is a later optimization.
 
 A desktop benchmark is available via `npm run bench:wavetable-voice`. It measures 12 Wavetable voices, 2048-sample tables and 64 harmonic partials at 48 kHz / 128-sample blocks. Its output is machine-specific and must not be treated as Android/ARM64 evidence.
+
+## OSC 01 UI and patch integration — increment 4
+
+The existing OSC 01 panel now exposes a source selector between `Virtual Analog` and `Wavetable`. The original SAW / SQUARE / SINE controls remain available in Virtual Analog mode; they are hidden, not destroyed, while Wavetable is selected. Wavetable mode exposes a 0–100% `TABLE MORPH` control and a live scope preview synthesized from the selected default frames.
+
+- `WavetablePresets.js` provides a built-in three-frame harmonic table: pure fundamental, hollow harmonic blend, and a brighter 32-partial frame. This is a factory preset, not sample import or a user table editor.
+- New typed parameters `engine.virtual-analog.osc-source` and `engine.virtual-analog.wavetable-morph` are captured by the existing patch schema and local patch store. Older patches without these keys normalize to `virtual-analog` and morph `0`, preserving their former sound.
+- New notes receive the Wavetable definition only when OSC 01 is set to Wavetable. Existing notes keep their source. Moving TABLE MORPH updates active Wavetable voices through `SET_WAVETABLE_MORPH` without resetting phase.
+- An LRU cache (12 immutable banks) shares identical harmonic mip banks between voices, avoiding rebuilding the same default table for every note. Per-voice oscillator phase and morph state remain independent.
+- The standalone `wavetable` EngineRegistry family remains `planned`: the implemented capability is a selectable oscillator source inside the Virtual Analog voice engine, not yet an independently registered synthesis engine with its own engine slot/factory.
+
+### Validation
+
+- TDD RED/GREEN covered the preset contract, typed parameters, patch round-trip, legacy patch defaults, bank sharing, and UI source/morph contracts.
+- Full suite: 168/168 tests passed.
+- Chromium real-browser smoke: PASS. The UI selected Wavetable, started a note through the touchscreen-style keyboard event path, changed morph while the note was active, saved a patch at morph 0.65, switched away, and restored the saved source/morph values. `wavetableUiErrors: []`.
+- Independent AudioWorklet spectral check at 44.1 kHz: initial frame 440 Hz = -36.36 dB and 880 Hz = -135.27 dB; after morph, 440 Hz = -119.95 dB and 880 Hz = -37.02 dB.
+- Responsive browser checks: 360×800 portrait and 800×360 landscape, both without horizontal overflow. `pageErrors: []`.
+- Integrated 12-voice benchmark, Linux x64 / Node 22, 48 kHz, 128 samples, 2048 table, 64 partials: mean 0.22491 ms/block, p95 0.29822 ms/block (8.43%/11.18% of the theoretical 2.66667 ms budget). Desktop-only measurement; no Android inference.
+
+### Remaining boundaries
+
+The Wavetable source is now usable in the browser UI and saved patches. Still missing: user-authored/imported tables, waveform frame editor, multiple named Wavetable presets, matrix destination for morph, standalone Wavetable engine registration, and Android/ARM64 profiling or physical-device validation.

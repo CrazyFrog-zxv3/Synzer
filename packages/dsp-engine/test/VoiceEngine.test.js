@@ -1060,3 +1060,19 @@ test('EG 03 pitch modulation drives Wavetable mip selection at the modulated pit
   render(engine, 32);
   assert.equal(engine.getVoice('pitch-modulated-wt').wavetable.mipTargetIndex, 0);
 });
+
+test('identical Wavetable definitions reuse an immutable mip bank across voices', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  const wavetable = {
+    size: 256,
+    partialFrames: [
+      [{ harmonic: 1, amplitude: 1 }],
+      [{ harmonic: 1, amplitude: 1 }, { harmonic: 2, amplitude: 0.5 }],
+    ],
+  };
+  engine.noteOn({ id: 'cached-wt-a', note: 60, frequency: 440, wavetable });
+  engine.noteOn({ id: 'cached-wt-b', note: 64, frequency: 523.25, wavetable: structuredClone(wavetable) });
+  const bankA = engine.voices.get('cached-wt-a').wavetableOscillators[0].bank;
+  const bankB = engine.voices.get('cached-wt-b').wavetableOscillators[0].bank;
+  assert.strictEqual(bankA, bankB);
+});
