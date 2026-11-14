@@ -1,0 +1,57 @@
+name: Deploy SYNZER feature preview to GitHub Pages
+
+on:
+  push:
+    branches:
+      - feature/synth-engine-hardening-v0.3.0
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production site into root
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Checkout feature build into preview/
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          path: preview
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Validate preview entry points
+        run: |
+          test -f index.html
+          test -f preview/index.html
+          test -f preview/main.js
+          test -f preview/packages/dsp-engine/src/core/SynzerEngine.js
+          test -f preview/packages/dsp-engine/src/core/VoiceEngine.js
+          test -f preview/packages/dsp-engine/src/worklets/synzer-processor.js
+          node --check preview/main.js
+          node --check preview/packages/dsp-engine/src/core/SynzerEngine.js
+          node --check preview/packages/dsp-engine/src/core/VoiceEngine.js
+          node --check preview/packages/dsp-engine/src/worklets/synzer-processor.js
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy preview alongside production
+        id: deployment
+        uses: actions/deploy-pages@v4
