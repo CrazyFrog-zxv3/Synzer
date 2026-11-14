@@ -555,15 +555,15 @@
             <div class="module-head"><div><h3 class="module-title">FILTER 01 · TPT STATE VARIABLE</h3><p class="module-subtitle">Filtro multimodo por voz · atualização em tempo real</p></div><span class="module-tag">DSP ACTIVE</span></div>
             <div class="control-info">
               <div class="info-tile"><span>TOPOLOGY</span><strong>Topology-Preserving Transform</strong></div>
-              <div class="info-tile"><span>MODES</span><strong>LP / HP / BP / OFF</strong></div>
+              <div class="info-tile"><span>MODES</span><strong>LP / HP / BP / NOTCH / AP / OFF</strong></div>
             </div>
             <div class="env-controls" style="margin-top:12px">
               <div class="control">
                 <div class="control-top"><label for="filter-mode">FILTER MODE</label></div>
                 <select id="filter-mode" aria-label="Filter mode" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
-                  <option value="off">OFF · BYPASS</option><option value="lowpass">LOW-PASS</option><option value="highpass">HIGH-PASS</option><option value="bandpass">BAND-PASS</option>
+                  <option value="off">OFF · BYPASS</option><option value="lowpass">LOW-PASS</option><option value="highpass">HIGH-PASS</option><option value="bandpass">BAND-PASS</option><option value="notch">NOTCH</option><option value="allpass">ALL-PASS</option>
                 </select>
-                <p class="control-hint">Quatro modos com o mesmo núcleo estável</p>
+                <p class="control-hint">Seis respostas usando o mesmo núcleo TPT</p>
               </div>
               <div class="control">
                 <div class="control-top"><label for="filter-cutoff">CUTOFF</label><output id="filter-cutoff-value">12.0 kHz</output></div>
