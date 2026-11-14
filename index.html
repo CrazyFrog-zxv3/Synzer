@@ -81,6 +81,18 @@
     .eyebrow { margin: 0 0 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
     .patch-title { margin: 0; font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
     .patch-id { color: var(--accent-2); font-size: 10px; font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
+    .patch-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+    .patch-name, .patch-select {
+      min-height: 40px; min-width: 0; max-width: 150px; padding: 0 10px;
+      border: 1px solid var(--line); border-radius: 8px; background: #121923; color: var(--text);
+      font-size: 11px;
+    }
+    .patch-action {
+      min-height: 40px; padding: 0 12px; border: 1px solid #66577f; border-radius: 8px;
+      background: linear-gradient(180deg, #393047, #262235); color: #e4d7ff;
+      font-size: 9px; font-weight: 850; letter-spacing: .08em; cursor: pointer;
+    }
+    .patch-action.secondary { border-color: var(--line); background: #202735; color: #b9c4d4; }
     .editor {
       overflow: hidden; margin-top: 12px; border: 1px solid var(--line); border-radius: 18px;
       background: linear-gradient(145deg, #191f2a, #141923);
@@ -163,6 +175,7 @@
     .control {
       min-width: 0; padding: 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: #1a222e;
     }
+    .master-level-control { margin-top: 12px; }
     .control-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 9px; }
     .control label { color: #bdc7d6; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
     .control output { color: var(--accent); font-size: 10px; font-weight: 850; font-variant-numeric: tabular-nums; }
@@ -172,6 +185,8 @@
     .info-tile { padding: 14px; border: 1px solid var(--line-soft); border-radius: 10px; background: #1a222e; }
     .info-tile span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
     .info-tile strong { display: block; margin-top: 8px; font-size: 16px; }
+    .route-enable { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; padding:11px 12px; border:1px solid var(--line-soft); border-radius:9px; background:#151b25; color:#bdc7d6; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .route-enable input { width:24px; height:24px; accent-color:var(--accent); }
     .roadmap {
       display: flex; align-items: flex-start; gap: 12px; padding: 16px;
       border: 1px dashed #4a5364; border-radius: 12px; background: #1a202a;
@@ -222,6 +237,10 @@
     .footer { padding: 13px 4px 0; color: #657184; font-size: 9px; line-height: 1.5; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 720px) {
+      .patch-strip { align-items: flex-start; flex-direction: column; }
+      .patch-actions { width: 100%; justify-content: flex-start; }
+      .patch-name { flex: 1 1 130px; max-width: none; }
+      .patch-select { flex: 1 1 130px; max-width: none; }
       .app-shell { padding: 10px 10px calc(22px + env(safe-area-inset-bottom)); }
       .module-grid, .envelope-layout { grid-template-columns: 1fr; }
       .scope { height: 150px; }
@@ -257,8 +276,15 @@
     </header>
 
     <section class="patch-strip" aria-label="Patch atual">
-      <div class="patch-meta"><p class="eyebrow">CURRENT PATCH · 001</p><h1 class="patch-title">Initial Analog</h1></div>
-      <div class="patch-id">VA / POLY</div>
+      <div class="patch-meta"><p class="eyebrow">CURRENT PATCH · LOCAL</p><h1 id="current-patch-title" class="patch-title">Initial Analog</h1></div>
+      <div class="patch-actions">
+        <label class="visually-hidden" for="patch-name">Nome do patch</label>
+        <input id="patch-name" class="patch-name" type="text" maxlength="48" value="Initial Analog" aria-label="Nome do patch" />
+        <button id="save-patch" class="patch-action" type="button">SAVE PATCH</button>
+        <label class="visually-hidden" for="patch-select">Patches salvos</label>
+        <select id="patch-select" class="patch-select" aria-label="Patches salvos"><option value="">Saved patches</option></select>
+        <button id="load-patch" class="patch-action secondary" type="button">LOAD</button>
+      </div>
     </section>
 
     <section class="editor" aria-label="Editor do sintetizador">
@@ -311,6 +337,58 @@
               </div>
             </article>
           </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">OSC 02 · SECONDARY OSCILLATOR</h3><p class="module-subtitle">Segunda fonte por voz · afinação independente</p></div><span class="module-tag">DUAL OSC</span></div>
+            <label class="route-enable" for="osc2-enabled"><span>OSCILLATOR 02 ENABLED</span><input id="osc2-enabled" type="checkbox"/></label>
+            <div class="control-info">
+              <div class="info-tile"><span>PITCH RATIO</span><strong id="osc2-pitch-readout">0 oct · 0 st · 0 ct</strong></div>
+              <div class="info-tile"><span>MIX LEVEL</span><strong id="osc2-level-readout">50%</strong></div>
+            </div>
+            <div class="env-controls" style="margin-top:12px">
+              <div class="control"><div class="control-top"><label for="osc2-wave">WAVEFORM</label></div>
+                <select id="osc2-wave" aria-label="Oscillator 2 waveform" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="sine">SINE</option><option value="saw">SAW</option><option value="square">SQUARE</option>
+                </select>
+              </div>
+              <div class="control"><div class="control-top"><label for="osc2-level">LEVEL</label><output id="osc2-level-value">50%</output></div><input id="osc2-level" type="range" min="0" max="100" value="50"/></div>
+              <div class="control"><div class="control-top"><label for="osc2-octave">OCTAVE</label></div>
+                <select id="osc2-octave" aria-label="Oscillator 2 octave" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="-2">−2</option><option value="-1">−1</option><option value="0" selected>0</option><option value="1">+1</option><option value="2">+2</option>
+                </select>
+              </div>
+              <div class="control"><div class="control-top"><label for="osc2-semitone">SEMITONE</label><output id="osc2-semitone-value">0 st</output></div><input id="osc2-semitone" type="range" min="-12" max="12" value="0"/></div>
+              <div class="control"><div class="control-top"><label for="osc2-fine">FINE TUNE</label><output id="osc2-fine-value">0 cents</output></div><input id="osc2-fine" type="range" min="-100" max="100" value="0"/></div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">OSC 02 é somado antes do filtro e compartilha o envelope de amplitude. A mistura é normalizada para preservar o nível máximo aproximado de uma voz.</p>
+          </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">NOISE GENERATOR</h3><p class="module-subtitle">Fonte de ruído independente por voz</p></div><span class="module-tag">WHITE / PINK</span></div>
+            <label class="route-enable" for="noise-enabled"><span>NOISE ENABLED</span><input id="noise-enabled" type="checkbox"/></label>
+            <div class="control-grid">
+              <div class="control"><div class="control-top"><label for="noise-color">COLOR</label></div><select id="noise-color" aria-label="Noise color" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px"><option value="white">WHITE</option><option value="pink">PINK</option></select></div>
+              <div class="control"><div class="control-top"><label for="noise-level">LEVEL</label><output id="noise-level-value">25%</output></div><input id="noise-level" type="range" min="0" max="100" value="25"/><p class="control-hint">0–100% · mix normalizado com OSC 01/02</p></div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">O ruído é gerado por voz, passa pelo mesmo filtro e envelope de amplitude dos osciladores. WHITE usa distribuição uniforme; PINK usa filtragem IIR em múltiplas bandas para reduzir energia nas altas frequências.</p>
+          </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">SUB OSCILLATOR</h3><p class="module-subtitle">Camada grave independente por voz</p></div><span class="module-tag">−1 / −2 OCT</span></div>
+            <label class="route-enable" for="sub-enabled"><span>SUB OSCILLATOR ENABLED</span><input id="sub-enabled" type="checkbox"/></label>
+            <div class="control-grid">
+              <div class="control"><div class="control-top"><label for="sub-wave">WAVEFORM</label></div><select id="sub-wave" aria-label="Sub oscillator waveform" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px"><option value="square">SQUARE</option><option value="sine">SINE</option><option value="saw">SAW</option></select></div>
+              <div class="control"><div class="control-top"><label for="sub-octave">OCTAVE</label></div><select id="sub-octave" aria-label="Sub oscillator octave" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px"><option value="-1" selected>−1</option><option value="-2">−2</option></select></div>
+              <div class="control"><div class="control-top"><label for="sub-level">LEVEL</label><output id="sub-level-value">25%</output></div><input id="sub-level" type="range" min="0" max="100" value="25"/><p class="control-hint">0–100% · mix normalizado com OSC 01/02 e Noise</p></div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">O sub acompanha a nota e as modulações de pitch de OSC 01, mantém fase própria e passa pelo mesmo filtro e envelope de amplitude. O padrão permanece desligado para preservar patches existentes.</p>
+          </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">UNISON</h3><p class="module-subtitle">Camadas de osciladores desafinadas simetricamente</p></div><span class="module-tag">1–4 VOICES</span></div>
+            <div class="control-grid">
+              <div class="control"><div class="control-top"><label for="unison-voices">UNISON VOICES</label></div><select id="unison-voices" aria-label="Unison voices" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px"><option value="1">1 · OFF</option><option value="2">2 VOICES</option><option value="3">3 VOICES</option><option value="4">4 VOICES</option></select></div>
+              <div class="control"><div class="control-top"><label for="unison-detune">DETUNE</label><output id="unison-detune-value">12 cents</output></div><input id="unison-detune" type="range" min="0" max="50" step="0.1" value="12"/><p class="control-hint">0–50 cents · distribuição simétrica</p></div>
+              <div class="control"><div class="control-top"><label for="unison-spread">STEREO SPREAD</label><output id="unison-spread-value">0%</output></div><input id="unison-spread" type="range" min="0" max="100" step="1" value="0"/><p class="control-hint">0% central · 100% abre as camadas entre L/R · requer 2–4 vozes</p></div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">Unison cria até quatro camadas por nota, aplicadas a OSC 01 e OSC 02. O detune distribui as camadas em torno da afinação central; Stereo Spread distribui cada camada entre os canais L/R antes do filtro, com filtros TPT independentes por canal. Em 0%, o sinal permanece central e mono-compatível.</p>
+          </div>
         </section>
 
         <section class="view" data-view="control" role="tabpanel" hidden>
@@ -319,8 +397,13 @@
             <div class="control-info">
               <div class="info-tile"><span>SYNTHESIS</span><strong>Virtual Analog</strong></div>
               <div class="info-tile"><span>RENDER PATH</span><strong>AudioWorklet</strong></div>
-              <div class="info-tile"><span>OSCILLATORS</span><strong>1 per voice</strong></div>
+              <div class="info-tile"><span>OSCILLATORS</span><strong>2 OSC + SUB</strong></div>
               <div class="info-tile"><span>VOICE LIMIT</span><strong>12 voices</strong></div>
+            </div>
+            <div class="control master-level-control">
+              <div class="control-top"><label for="master-level">MASTER LEVEL</label><output id="master-level-value" for="master-level">100%</output></div>
+              <input id="master-level" type="range" min="0" max="100" value="100" />
+              <p class="control-hint">Ganho global linear · atualização em tempo real</p>
             </div>
           </div>
         </section>
@@ -347,13 +430,204 @@
         </section>
 
         <section class="view" data-view="matrix" role="tabpanel" hidden>
-          <div class="roadmap"><div class="roadmap-mark">⌘</div><div><h3>MODULATION MATRIX</h3><p>As rotas entre fontes e destinos ainda não fazem parte do motor DSP atual. Esta área fica reservada para uma matriz por camada, com quantidades bipolares e edição direta.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
+          <div class="module">
+            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING V4</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <div class="module-grid">
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">SOURCE · EG 02</h3><p class="module-subtitle">Filter envelope → filter cutoff</p></div><span class="module-tag">ROUTE 01</span></div>
+                <div class="spec-list">
+                  <div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div>
+                  <div class="spec-row"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
+                </div>
+                <label class="route-enable" for="filter-env-route-enabled"><span>ROUTE ENABLED</span><input id="filter-env-route-enabled" type="checkbox" checked/></label>
+                <div class="control">
+                  <div class="control-top"><label for="filter-env-amount">MODULATION AMOUNT</label><output id="filter-env-amount-value">0 st</output></div>
+                  <input id="filter-env-amount" type="range" min="-48" max="48" step="1" value="0"/>
+                  <p class="control-hint">−48 st fecha · +48 st abre</p>
+                </div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">SOURCE · LFO 01</h3><p class="module-subtitle">Low-frequency oscillator → filter cutoff</p></div><span class="module-tag">ROUTE 02</span></div>
+                <div class="spec-list">
+                  <div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div>
+                  <div class="spec-row"><span>DESTINATION</span><strong>FILTER CUTOFF</strong></div>
+                </div>
+                <label class="route-enable" for="lfo1-route-enabled"><span>ROUTE ENABLED</span><input id="lfo1-route-enabled" type="checkbox" checked/></label>
+                <div class="control">
+                  <div class="control-top"><label for="lfo1-amount">MODULATION AMOUNT</label><output id="lfo1-amount-value">0 st</output></div>
+                  <input id="lfo1-amount" type="range" min="-48" max="48" step="1" value="0"/>
+                  <p class="control-hint">Profundidade bipolar · soma com EG 02</p>
+                </div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → OSC 01 PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 01 PITCH</strong></div></div>
+                <label class="route-enable" for="eg-osc1-enabled"><span>ROUTE ENABLED</span><input id="eg-osc1-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-osc1-amount">PITCH AMOUNT</label><output id="eg-osc1-amount-value">0 st</output></div><input id="eg-osc1-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → OSC 02 PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 02 PITCH</strong></div></div>
+                <label class="route-enable" for="eg-osc2-enabled"><span>ROUTE ENABLED</span><input id="eg-osc2-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-osc2-amount">PITCH AMOUNT</label><output id="eg-osc2-amount-value">0 st</output></div><input id="eg-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → OSC 01 PITCH</h3><p class="module-subtitle">LFO 01 → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 01 PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-osc1-enabled"><span>ROUTE ENABLED</span><input id="lfo-osc1-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-osc1-amount">PITCH AMOUNT</label><output id="lfo-osc1-amount-value">0 st</output></div><input id="lfo-osc1-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → OSC 02 PITCH</h3><p class="module-subtitle">LFO 01 → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 02 PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-osc2-enabled"><span>ROUTE ENABLED</span><input id="lfo-osc2-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-osc2-amount">PITCH AMOUNT</label><output id="lfo-osc2-amount-value">0 st</output></div><input id="lfo-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 03 → OSC 01 PITCH</h3><p class="module-subtitle">PITCH ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>PITCH ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 01 PITCH</strong></div></div>
+                <label class="route-enable" for="pitch-env-osc1-enabled"><span>ROUTE ENABLED</span><input id="pitch-env-osc1-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="pitch-env-osc1-amount">PITCH AMOUNT</label><output id="pitch-env-osc1-amount-value">0 st</output></div><input id="pitch-env-osc1-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 03 → OSC 02 PITCH</h3><p class="module-subtitle">PITCH ENVELOPE → oscillator pitch</p></div><span class="module-tag">PITCH ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>PITCH ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>OSC 02 PITCH</strong></div></div>
+                <label class="route-enable" for="pitch-env-osc2-enabled"><span>ROUTE ENABLED</span><input id="pitch-env-osc2-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="pitch-env-osc2-amount">PITCH AMOUNT</label><output id="pitch-env-osc2-amount-value">0 st</output></div><input id="pitch-env-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → SUB PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → sub oscillator pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="eg-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="eg-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-sub-pitch-amount">PITCH AMOUNT</label><output id="eg-sub-pitch-amount-value">0 st</output></div><input id="eg-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 03 → SUB PITCH</h3><p class="module-subtitle">PITCH ENVELOPE → sub oscillator pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>PITCH ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="pitch-env-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="pitch-env-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="pitch-env-sub-pitch-amount">PITCH AMOUNT</label><output id="pitch-env-sub-pitch-amount-value">0 st</output></div><input id="pitch-env-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → SUB PITCH</h3><p class="module-subtitle">LOW FREQUENCY OSCILLATOR → sub pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="lfo-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-sub-pitch-amount">PITCH AMOUNT</label><output id="lfo-sub-pitch-amount-value">0 st</output></div><input id="lfo-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
+            </div>
+            <p class="control-hint" style="margin-top:12px">Matriz v4: EG 02, EG 03 e LFO 01 podem modular cutoff, OSC 01, OSC 02 e Sub. As rotas do Sub são independentes da afinação de OSC 01, têm profundidade bipolar e ativação próprias, e são compiladas antes do processamento por amostra.</p>
+          </div>
         </section>
         <section class="view" data-view="modifiers" role="tabpanel" hidden>
-          <div class="roadmap"><div class="roadmap-mark">∿</div><div><h3>MODIFIERS</h3><p>LFOs, arpejador e sequenciador pertencem à próxima etapa de arquitetura. Nenhum controle desta tela altera o áudio ainda.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
+          <div class="module">
+            <div class="module-head"><div><h3 class="module-title">LFO 01 · LOW FREQUENCY OSCILLATOR</h3><p class="module-subtitle">Oscilador de baixa frequência · retrigger por voz</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <svg class="scope" viewBox="0 0 640 180" preserveAspectRatio="none" role="img" aria-label="Forma de onda do LFO">
+              <path class="scope-axis" d="M0 90H640 M0 45H640 M0 135H640 M80 0V180 M160 0V180 M240 0V180 M320 0V180 M400 0V180 M480 0V180 M560 0V180"/>
+              <path id="lfo1-wave-path" class="scope-wave" d="M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90"/>
+            </svg>
+            <div class="scope-footer"><span>−1.0</span><span>LFO CYCLE</span><span>+1.0</span></div>
+            <div class="control-info" style="margin-top:12px">
+              <div class="info-tile"><span>ROUTE</span><strong>LFO 01 → MATRIX DESTINATIONS</strong></div>
+              <div class="info-tile"><span>VOICE MODE</span><strong>RETRIGGER / PER VOICE</strong></div>
+            </div>
+            <div class="env-controls" style="margin-top:12px">
+              <div class="control">
+                <div class="control-top"><label for="lfo1-waveform">WAVEFORM</label></div>
+                <select id="lfo1-waveform" aria-label="LFO waveform" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="sine">SINE</option><option value="triangle">TRIANGLE</option><option value="square">SQUARE</option><option value="saw-up">SAW UP</option><option value="saw-down">SAW DOWN</option>
+                </select>
+              </div>
+              <div class="control">
+                <div class="control-top"><label for="lfo1-rate">RATE</label><output id="lfo1-rate-value">1.00 Hz</output></div>
+                <input id="lfo1-rate" type="range" min="5" max="2000" step="5" value="100"/>
+                <p class="control-hint">0.05–20 Hz · free rate, no tempo sync</p>
+              </div>
+              <div class="control-info">
+                <div class="info-tile"><span>ROUTE DEPTH</span><strong id="lfo1-amount-readout">0 st</strong></div>
+                <div class="info-tile"><span>DESTINATION</span><strong>FILTER + OSC PITCH</strong></div>
+              </div>
+              <p class="control-hint">A profundidade e a ativação de cada destino são editadas na MODULATION MATRIX.</p>
+            </div>
+            <p class="control-hint" style="margin-top:12px">A profundidade zero desativa a modulação audível, mas o oscilador continua avançando. O LFO pode modular cutoff e pitch dos dois osciladores.</p>
+          </div>
         </section>
         <section class="view" data-view="global" role="tabpanel" hidden>
-          <div class="roadmap"><div class="roadmap-mark">◉</div><div><h3>GLOBAL / INSTRUMENT</h3><p>Camadas adicionais, filtros, efeitos, unison e gerenciamento global serão acrescentados somente quando houver processamento correspondente e testes.</p><small>PLANEJADO · NÃO IMPLEMENTADO</small></div></div>
+          <div class="module">
+            <div class="module-head"><div><h3 class="module-title">FILTER 01 · TPT STATE VARIABLE</h3><p class="module-subtitle">Filtro multimodo por voz · atualização em tempo real</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <div class="control-info">
+              <div class="info-tile"><span>TOPOLOGY</span><strong>Topology-Preserving Transform</strong></div>
+              <div class="info-tile"><span>MODES</span><strong>LP / HP / BP / OFF</strong></div>
+            </div>
+            <div class="env-controls" style="margin-top:12px">
+              <div class="control">
+                <div class="control-top"><label for="filter-mode">FILTER MODE</label></div>
+                <select id="filter-mode" aria-label="Filter mode" style="width:100%;min-height:42px;background:#111722;color:#e5eaf2;border:1px solid #3a4658;border-radius:8px;padding:8px">
+                  <option value="off">OFF · BYPASS</option><option value="lowpass">LOW-PASS</option><option value="highpass">HIGH-PASS</option><option value="bandpass">BAND-PASS</option>
+                </select>
+                <p class="control-hint">Quatro modos com o mesmo núcleo estável</p>
+              </div>
+              <div class="control">
+                <div class="control-top"><label for="filter-cutoff">CUTOFF</label><output id="filter-cutoff-value">12.0 kHz</output></div>
+                <input id="filter-cutoff" type="range" min="0" max="1000" step="1" value="926" />
+                <p class="control-hint">Escala logarítmica · 20 Hz–20 kHz</p>
+              </div>
+              <div class="control">
+                <div class="control-top"><label for="filter-resonance">RESONANCE</label><output id="filter-resonance-value">0.71 Q</output></div>
+                <input id="filter-resonance" type="range" min="50" max="1200" step="1" value="71" />
+                <p class="control-hint">Q 0.50–12.00</p>
+              </div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">O filtro é processado individualmente em cada voz. O modo OFF preserva o sinal original.</p>
+          </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">EG 02 · FILTER CUTOFF</h3><p class="module-subtitle">Envelope dedicado · modulação bipolar em semitons</p></div><span class="module-tag">FILTER MOD</span></div>
+            <div class="envelope-layout">
+              <article class="module">
+                <svg class="env-graph" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="Curva do envelope dedicado do filtro">
+                  <path class="scope-axis" d="M0 47H600 M0 95H600 M0 142H600 M120 0V190 M240 0V190 M360 0V190 M480 0V190"/>
+                  <path id="filter-env-fill" class="env-fill" d="M0 180 L80 15 L190 180 L480 180 L580 180 Z"/>
+                  <path id="filter-env-path" class="env-line" d="M0 180 L80 15 L190 180 L480 180 L580 180"/>
+                </svg>
+                <div class="scope-footer"><span>ATTACK</span><span>DECAY / SUSTAIN</span><span>RELEASE</span></div>
+                <div class="control-info" style="margin-top:12px">
+                  <div class="info-tile"><span>DEPTH</span><strong id="filter-env-depth-readout">0 semitones</strong></div>
+                  <div class="info-tile"><span>POLARITY</span><strong id="filter-env-polarity">NEUTRAL</strong></div>
+                </div>
+              </article>
+              <div class="env-controls">
+                <div class="control"><div class="control-top"><label for="filter-env-attack">ATTACK</label><output id="filter-env-attack-value">10 ms</output></div><input id="filter-env-attack" type="range" min="0" max="3000" value="10"/><p class="control-hint">0–3000 ms</p></div>
+                <div class="control"><div class="control-top"><label for="filter-env-decay">DECAY</label><output id="filter-env-decay-value">300 ms</output></div><input id="filter-env-decay" type="range" min="0" max="3000" value="300"/><p class="control-hint">0–3000 ms</p></div>
+                <div class="control"><div class="control-top"><label for="filter-env-sustain">SUSTAIN</label><output id="filter-env-sustain-value">0%</output></div><input id="filter-env-sustain" type="range" min="0" max="100" value="0"/><p class="control-hint">0–100%</p></div>
+                <div class="control"><div class="control-top"><label for="filter-env-release">RELEASE</label><output id="filter-env-release-value">250 ms</output></div><input id="filter-env-release" type="range" min="0" max="3000" value="250"/><p class="control-hint">0–3000 ms</p></div>
+                <p class="control-hint">A profundidade e a ativação da rota são editadas na MODULATION MATRIX.</p>
+              </div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">EG 02 é independente do envelope de amplitude. Cada nota recebe seu próprio estado de envelope e modula o cutoff da própria voz.</p>
+          </div>
+          <div class="module" style="margin-top:12px">
+            <div class="module-head"><div><h3 class="module-title">EG 03 · PITCH ENVELOPE</h3><p class="module-subtitle">Envelope dedicado · afinação independente por oscilador</p></div><span class="module-tag">PITCH MOD</span></div>
+            <div class="envelope-layout">
+              <article class="module">
+                <svg class="env-graph" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="Curva do envelope dedicado de pitch">
+                  <path class="scope-axis" d="M0 47H600 M0 95H600 M0 142H600 M120 0V190 M240 0V190 M360 0V190 M480 0V190"/>
+                  <path id="pitch-env-fill" class="env-fill" d="M0 180 L80 18 L190 180 L480 180 L580 180 Z"/>
+                  <path id="pitch-env-path" class="env-line" d="M0 180 L80 18 L190 180 L480 180 L580 180"/>
+                </svg>
+                <div class="scope-footer"><span>ATTACK</span><span>DECAY / SUSTAIN</span><span>RELEASE</span></div>
+                <div class="control-info" style="margin-top:12px">
+                  <div class="info-tile"><span>DESTINATIONS</span><strong>OSC 01 / OSC 02</strong></div>
+                  <div class="info-tile"><span>DEPTH</span><strong>−48…+48 st</strong></div>
+                </div>
+              </article>
+              <div class="env-controls">
+                <div class="control"><div class="control-top"><label for="pitch-env-attack">ATTACK</label><output id="pitch-env-attack-value">5 ms</output></div><input id="pitch-env-attack" type="range" min="0" max="3000" value="5"/><p class="control-hint">0–3000 ms</p></div>
+                <div class="control"><div class="control-top"><label for="pitch-env-decay">DECAY</label><output id="pitch-env-decay-value">80 ms</output></div><input id="pitch-env-decay" type="range" min="0" max="3000" value="80"/><p class="control-hint">0–3000 ms</p></div>
+                <div class="control"><div class="control-top"><label for="pitch-env-sustain">SUSTAIN</label><output id="pitch-env-sustain-value">0%</output></div><input id="pitch-env-sustain" type="range" min="0" max="100" value="0"/><p class="control-hint">0–100%</p></div>
+                <div class="control"><div class="control-top"><label for="pitch-env-release">RELEASE</label><output id="pitch-env-release-value">80 ms</output></div><input id="pitch-env-release" type="range" min="0" max="3000" value="80"/><p class="control-hint">0–3000 ms</p></div>
+                <p class="control-hint">As profundidades e ativações independentes de OSC 01 e OSC 02 são editadas na MODULATION MATRIX.</p>
+              </div>
+            </div>
+            <p class="control-hint" style="margin-top:12px">EG 03 tem estado ADSR próprio por nota e não reutiliza o envelope de amplitude nem o EG 02. Profundidade zero mantém o comportamento sonoro anterior.</p>
+          </div>
         </section>
       </div>
     </section>
@@ -370,10 +644,10 @@
     <section class="metrics" aria-label="Diagnóstico do motor">
       <div class="metric"><span>HELD KEYS</span><strong id="voice-count">0</strong></div>
       <div class="metric"><span>AUDIO ENGINE</span><strong id="worklet-state">NOT INITIALIZED</strong></div>
-      <div class="metric"><span>DSP</span><strong>POLYBLEP / ADSR</strong></div>
+      <div class="metric"><span>DSP</span><strong>POLYBLEP / WHITE-PINK NOISE / UNISON / 3 ADSR / TPT / LFO</strong></div>
     </section>
     <p id="message" role="status" aria-live="polite">Pronto. O áudio é inicializado no primeiro toque.</p>
-    <footer class="footer">SYNZER · UI FOUNDATION 0.1.0 · Motor atual: 1 oscilador virtual analógico por voz, ADSR e até 12 vozes. Granular, matriz de modulação, LFOs, filtros e efeitos ainda não estão implementados.</footer>
+    <footer class="footer">SYNZER · UI FOUNDATION 0.1.0 · Motor atual: 1 oscilador virtual analógico por voz, ADSR, filtro TPT multimodo, três envelopes ADSR por voz, ruído branco/rosa e até 12 vozes. Wavetable, FM, granular, matriz de modulação, LFOs e efeitos ainda não estão implementados.</footer>
   </main>
   <script type="module" src="./main.js"></script>
 </body>

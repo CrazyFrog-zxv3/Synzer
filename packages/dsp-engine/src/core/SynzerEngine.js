@@ -1,3 +1,5 @@
+import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+
 export class SynzerEngine {
   constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, onError = null } = {}) {
     this.audioContextFactory = audioContextFactory;
@@ -8,14 +10,42 @@ export class SynzerEngine {
     this.context = null;
     this.node = null;
     this.initPromise = null;
+    this.resumePromise = null;
     this.voiceSequence = 0;
     this.handles = new Map();
     this.noteStacks = new Map();
     this.lifecycleGeneration = 0;
+    this.processorFailure = null;
+    this.parameters = createDefaultVirtualAnalogParameters();
   }
 
   async initialize() {
-    if (this.node) return;
+    if (this.processorFailure) throw this.processorFailure;
+    if (this.node) {
+      const context = this.context;
+      const node = this.node;
+      const generation = this.lifecycleGeneration;
+      if (!context || context.state === 'closed') {
+        throw new Error('AudioContext is closed while the audio node is still attached.');
+      }
+      if (context.state === 'suspended') {
+        if (!this.resumePromise) {
+          const resuming = (async () => {
+            await context.resume();
+            if (generation !== this.lifecycleGeneration || this.context !== context || this.node !== node || context.state === 'closed') {
+              throw new Error('Audio engine was closed during resume.');
+            }
+          })();
+          this.resumePromise = resuming;
+        }
+        const resuming = this.resumePromise;
+        try { await resuming; }
+        finally {
+          if (this.resumePromise === resuming) this.resumePromise = null;
+        }
+      }
+      return;
+    }
     if (this.initPromise) return this.initPromise;
     const generation = this.lifecycleGeneration;
     const context = this.context ?? this.audioContextFactory();
@@ -55,9 +85,20 @@ export class SynzerEngine {
         }
         this.onError?.(error);
       };
+      node.onprocessorerror = () => {
+        if (this.node !== node || this.processorFailure) return;
+        const error = new Error('AudioWorklet processor failed; close and reinitialize the engine before sending more notes.');
+        error.name = 'SynzerProcessorError';
+        this.processorFailure = error;
+        this.handles.clear();
+        this.noteStacks.clear();
+        this.onError?.(error);
+      };
       try {
         node.connect(context.destination);
         assertCurrent();
+        this.processorFailure = null;
+        node.port.postMessage({ type: 'SET_PARAMETERS', parameters: this.parameters });
         this.node = node;
       } catch (error) {
         node.disconnect();
@@ -73,10 +114,27 @@ export class SynzerEngine {
     }
   }
 
-  async noteOn({ note, frequency, velocity = 1, waveform = 'saw', envelope } = {}) {
+  getParameters() {
+    return { ...this.parameters };
+  }
+
+  setParameters(values = {}) {
+    if (values === null || typeof values !== 'object' || Array.isArray(values)) {
+      throw new TypeError('Virtual Analog parameters must be an object.');
+    }
+    const next = normalizeVirtualAnalogParameters({ ...this.parameters, ...values });
+    this.parameters = next;
+    if (this.node && !this.processorFailure) {
+      this.node.port.postMessage({ type: 'SET_PARAMETERS', parameters: next });
+    }
+    return this.getParameters();
+  }
+
+  async noteOn({ note, frequency, velocity = 1, waveform, envelope } = {}) {
     await this.initialize();
+    if (this.processorFailure) throw this.processorFailure;
     const voiceId = `synzer-voice-${++this.voiceSequence}`;
-    const voice = { id: voiceId, note, frequency, velocity, waveform, envelope };
+    const voice = { id: voiceId, note, frequency, velocity, ...(waveform === undefined ? {} : { waveform }), ...(envelope === undefined ? {} : { envelope }) };
     this.node.port.postMessage({ type: 'NOTE_ON', voice });
     this.handles.set(voiceId, note);
     const stack = this.noteStacks.get(note) ?? [];
@@ -86,7 +144,9 @@ export class SynzerEngine {
   }
 
   async noteOff(voiceId) {
+    if (!this.handles.has(voiceId)) return false;
     await this.initialize();
+    if (this.processorFailure) throw this.processorFailure;
     if (!this.handles.has(voiceId)) return false;
     this.node.port.postMessage({ type: 'NOTE_OFF', voiceId });
     const note = this.handles.get(voiceId);
@@ -111,6 +171,8 @@ export class SynzerEngine {
     this.node = null;
     this.context = null;
     this.initPromise = null;
+    this.resumePromise = null;
+    this.processorFailure = null;
     if (node) { node.disconnect(); node.port.close(); }
     this.handles.clear();
     this.noteStacks.clear();
