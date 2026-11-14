@@ -1,51 +1,47 @@
 # SYNZER — Direção visual e arquitetura de interface
 
-**Versão:** UI Foundation 0.1.0  
-**Data:** 2026-11-13  
-**Estado:** implementado parcialmente no GitHub Pages
+**Versão:** UI Identity 0.2.0  
+**Data:** 2026-11-14  
+**Estado:** nova direção visual implementada em branch de desenvolvimento; validação visual em dispositivo físico pendente.
 
-## Direção aprovada
+## Identidade do produto
 
-A interface do SYNZER passa a usar três referências, com prioridade visual para FRMS:
+SYNZER é um sintetizador virtual web, modular e expansível. A interface deve comunicar um instrumento musical complexo, com profundidade de controle e clareza operacional. O objetivo é construir uma identidade própria, não reproduzir a aparência de qualquer referência.
 
-1. **FRMS (principal):** estrutura de editor modular, navegação por painéis (Waveform, Control, Envelope, Matrix, Modifiers e Global), linguagem visual escura e técnica, camadas separadas e zona de performance inferior. A estrutura do FRMS organiza quatro layers e trabalha com painéis horizontais; o SYNZER adotará essa lógica progressivamente, sem copiar sua interface literalmente.
-2. **G-Stomper VA-Beast (complementar):** densidade de controles de instrumento, organização funcional em módulos, leitura rápida de parâmetros e teclado integrado.
-3. **ToneBoosters Flowtones (complementar):** identidade de sintetizador virtual analógico, seleção visual de osciladores/formas de onda e edição de parâmetros de síntese.
+## Hierarquia de referências
 
-> Nota de nomenclatura: a referência entendida como “FlowTunes” foi interpretada como **Flowtones**, o editor/sintetizador da ToneBoosters. O aplicativo “Flow Tunes” com esse nome é um reprodutor musical, não o sintetizador.
+1. **G-Stomper VA-Beast — referência principal para densidade e linguagem de instrumento:** organização funcional de módulos, abundância de controles, painel de hardware, leitura de parâmetros, profundidade e ergonomia de um sintetizador de performance.
+2. **FRMS — referência de refinamento e clareza:** legibilidade, visualização de sinais, hierarquia de informação e facilidade de navegação. Não copiar composição, navegação por camadas, estrutura horizontal ou disposição dos painéis.
+3. **ToneBoosters Flowtones — referência complementar:** expressividade de modulação, relação entre fontes e destinos, visualização de parâmetros e integração do fluxo de sound design.
 
-## Princípios de interface
+## Linguagem visual própria
 
-- Mobile-first, suporte a retrato e paisagem, áreas de toque amplas e scroll horizontal controlado nos tabs.
-- Fundo carvão/azul-marinho, superfícies em camadas, linhas discretas e acentos violeta; cores reservadas para estados, seleção e visualização.
-- Organização em três zonas: status/preset, editor de síntese e teclado/performance.
-- Navegação por módulos consistente, com a camada ativa explicitamente identificada.
-- Controles visuais devem refletir parâmetros realmente conectados ao motor DSP.
-- Recursos futuros devem ser indicados como planejados/desativados, nunca apresentados como se já processassem áudio.
-- O teclado deve manter comportamento multitouch por Pointer Events.
+- Chassi de instrumento em grafite, carvão e metal escovado.
+- Contraste quente de âmbar para seleção, valores e estados de controle.
+- Turquesa reservado para sinal/visualização de áudio.
+- Violeta usado apenas como acento secundário para estados de modulação.
+- Módulos com cabeçalhos próprios, contornos, sombras internas, indicadores e separação funcional.
+- Controles com aparência de hardware: faders, seletores, botões de pressão e indicadores.
+- Densidade visual maior, sem sacrificar legibilidade nem alvos touchscreen.
 
-## Estado implementado na UI Foundation 0.1.0
+## Composição e navegação
 
-- Header SYNZER e estado do motor.
-- Faixa de patch inicial (somente rótulo; gerenciamento de presets ainda não implementado).
-- Layer 1 ativa; layers 2–4 visíveis, porém desativadas.
-- Painéis Waveform, Control, Envelope, Matrix, Modifiers e Global.
-- Seleção funcional de Saw, Square e Sine conectada ao elemento select consumido por main.js.
-- Scope esquemático altera a forma exibida conforme o oscilador selecionado; não é captura de áudio em tempo real.
-- Envelope gráfico acompanha Attack, Decay, Sustain e Release, e os quatro controles permanecem conectados à voz.
-- Teclado de uma oitava C4–C5 com teclas brancas/pretas e multitouch.
-- Indicadores de teclas pressionadas e estado de inicialização do AudioWorklet.
+- Em telas médias e grandes, o editor usa uma barra vertical de bancos de módulos à esquerda e a área de edição à direita.
+- Em retrato móvel, a navegação volta a uma faixa horizontal compacta para preservar espaço útil.
+- Cabeçalho e seletor de patch formam uma faixa de estado independente.
+- A zona de performance e teclado é uma seção própria, com acabamento de painel físico.
+- Alvos de toque permanecem em 48 px no mínimo, com exceção de navegação compacta em paisagem de baixa altura, onde os tabs podem cair para 44 px.
+- A interface deve evitar overflow horizontal e manter foco visível, estados de seleção e suporte a reduced motion.
 
-## Limites atuais do motor
+## Limites de implementação
 
-O motor continua sendo o baseline 0.2.0: um oscilador virtual analógico por voz, formas Saw/Square com PolyBLEP e Sine, ADSR, até 12 vozes e renderização via AudioWorklet.
+Esta revisão altera apenas apresentação CSS e documentação de direção visual. IDs, eventos, parâmetros, estado de patch e ligações ao DSP são preservados. Não adiciona capacidades sonoras, novas engines, novos controles funcionais ou processamento de áudio.
 
-Ainda não estão implementados: síntese granular, quatro layers reais, dois osciladores por voz, filtros, FM, matriz de modulação, LFOs, arpejador/sequenciador, efeitos, unison, patch save/load, MIDI I/O e importação/captura de samples.
+O scope de oscilador continua esquemático, não é analisador de áudio em tempo real. A interface deve continuar distinguindo recursos implementados de recursos planejados.
 
-## Critérios para as próximas etapas
+## Critérios de validação
 
-1. Validar esta interface no Chrome Android real, em retrato e paisagem, incluindo multitouch e áudio.
-2. Formalizar o modelo de estado de patch e de layer antes de adicionar controles que alterem DSP.
-3. Evoluir o motor em módulos pequenos, com testes automatizados antes de expor cada parâmetro na UI.
-4. Implementar primeiro os controles básicos de oscilador e filtros, depois envelopes/modulação e camadas, sem comprometer a separação entre interface e engine.
-5. Manter documentação e testes do pacote-fonte 0.2.0 como baseline e criar versão nova somente com mudanças de motor verificadas.
+- Testes automatizados para tokens de identidade, navegação adaptativa, foco e alvos de toque.
+- CI de DSP e integração de áudio deve continuar verde.
+- Verificação de viewport retrato e paisagem no Chromium.
+- Inspeção visual no Chrome Android e teste físico no POCO continuam pendentes até execução no aparelho.
