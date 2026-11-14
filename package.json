@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node --test",
     "bench:dsp": "node packages/dsp-engine/bench/render-benchmark.js",
-    "test:browser": "node scripts/browser-smoke.mjs"
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "bench:wavetable": "node packages/dsp-engine/bench/wavetable-mip-benchmark.js"
   }
 }
