@@ -1,6 +1,8 @@
 name: Deploy SYNZER preview to GitHub Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       source_ref:
@@ -27,7 +29,7 @@ jobs:
       - name: Checkout requested SYNZER build into preview/
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ inputs.source_ref || 'feature/synth-engine-hardening-v0.3.0' }}
           path: preview
       - name: Configure Pages
         uses: actions/configure-pages@v5
