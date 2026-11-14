@@ -111,3 +111,30 @@ test('filter state can be copied between same-rate channel instances', () => {
   const incompatible = new TptStateVariableFilter({ sampleRate: 44100 });
   assert.throws(() => incompatible.copyStateFrom(left), /sample rate/i);
 });
+
+
+test('notch filter rejects its center frequency while passing frequencies on both sides', () => {
+  const low = renderFilter({ mode: 'notch', frequency: 100 });
+  const center = renderFilter({ mode: 'notch', frequency: 1000 });
+  const high = renderFilter({ mode: 'notch', frequency: 8000 });
+  assert.ok(center < 0.02, 'center frequency should be strongly rejected');
+  assert.ok(low > 0.9, 'low frequency should pass');
+  assert.ok(high > 0.9, 'high frequency should pass');
+});
+
+test('all-pass filter preserves magnitude across low, center, and high frequencies', () => {
+  for (const frequency of [100, 1000, 8000, 16000]) {
+    const magnitude = renderFilter({ mode: 'allpass', frequency });
+    assert.ok(Math.abs(magnitude - 1) < 0.015, `magnitude should remain unity at ${frequency} Hz, received ${magnitude}`);
+  }
+});
+
+test('notch and all-pass remain finite at extreme supported cutoff and resonance values', () => {
+  for (const mode of ['notch', 'allpass']) {
+    const filter = new TptStateVariableFilter({ sampleRate: 44100, mode, cutoff: 20000, resonance: 12 });
+    for (let i = 0; i < 200000; i++) {
+      const sample = Math.sin(i * 0.31);
+      assert.ok(Number.isFinite(filter.process(sample)));
+    }
+  }
+});
