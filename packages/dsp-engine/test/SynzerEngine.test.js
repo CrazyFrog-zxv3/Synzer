@@ -1,4 +1,10 @@
-lose: 0, contextClose: 0 };
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { SynzerEngine } from '../src/core/SynzerEngine.js';
+
+function createHarness({ addModule = async () => {}, onError = null, contextFactory } = {}) {
+  const messages = [];
+  const counters = { resume: 0, addModule: 0, connect: 0, disconnect: 0, portClose: 0, contextClose: 0 };
   const context = {
     state: 'suspended',
     destination: {},

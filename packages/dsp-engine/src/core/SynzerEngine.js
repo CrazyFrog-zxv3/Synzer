@@ -1,4 +1,33 @@
-t context = this.context;
+import { createDefaultVirtualAnalogParameters, normalizeVirtualAnalogParameters } from './VirtualAnalogParameters.js';
+
+export class SynzerEngine {
+  constructor({ audioContextFactory = () => new AudioContext(), workletUrl = new URL('../worklets/synzer-processor.js', import.meta.url), maxVoices = 12, engineId = 'virtual-analog', onError = null } = {}) {
+    this.audioContextFactory = audioContextFactory;
+    this.workletUrl = workletUrl;
+    this.maxVoices = maxVoices;
+    this.engineId = engineId;
+    this.effectRackConfiguration = { order: ['delay', 'reverb'], enabled: { delay: true, reverb: true } };
+    this.effectParameters = { time: 0.375, feedback: 0.28, mix: 0, pingPong: false, roomSize: 0.72, damping: 0.35, reverbMix: 0, width: 0.8, preDelayMs: 0, earlyLevel: 0.65, modulationRateHz: 0.35, modulationDepthMs: 0 };
+    this.fmParameters = { 'global.master-level': 0.8, 'engine.fm.algorithm': 1, 'engine.fm.feedback': 0, ...Object.fromEntries([1, 2, 3, 4].flatMap((op) => [[`engine.fm.op${op}-ratio`, 1], [`engine.fm.op${op}-level`, op === 1 ? 0.8 : 0.7], [`engine.fm.op${op}-index`, op === 1 ? 0 : 2.5], [`engine.fm.op${op}-attack`, 0.005], [`engine.fm.op${op}-decay`, 0.15], [`engine.fm.op${op}-sustain`, 0.8], [`engine.fm.op${op}-release`, 0.22]])) };
+    if (onError !== null && typeof onError !== 'function') throw new TypeError('onError must be a function when provided.');
+    this.onError = onError;
+    this.context = null;
+    this.node = null;
+    this.initPromise = null;
+    this.resumePromise = null;
+    this.voiceSequence = 0;
+    this.handles = new Map();
+    this.wavetableHandles = new Set();
+    this.noteStacks = new Map();
+    this.lifecycleGeneration = 0;
+    this.processorFailure = null;
+    this.parameters = createDefaultVirtualAnalogParameters();
+  }
+
+  async initialize() {
+    if (this.processorFailure) throw this.processorFailure;
+    if (this.node) {
+      const context = this.context;
       const node = this.node;
       const generation = this.lifecycleGeneration;
       if (!context || context.state === 'closed') {
