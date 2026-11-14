@@ -229,25 +229,36 @@ export class VoiceEngine {
       }
       voice.unison.spread = this.defaultUnison.spread;
       if (voice.unison.voices !== this.defaultUnison.voices) {
-        const primaryOsc1Phase = voice.unison.oscillator1Phases[0] ?? voice.phase;
-        const primaryOsc2Phase = voice.unison.oscillator2Phases[0] ?? voice.oscillator2.phase;
+        // Snapshot the old lanes before resizing. Reinitializing from the primary
+        // phase collapses every surviving lane and causes a phase jump on live edits.
+        const previousOsc1Phases = voice.unison.oscillator1Phases;
+        const previousOsc2Phases = voice.unison.oscillator2Phases;
+        const primaryOsc1Phase = previousOsc1Phases[0] ?? voice.phase;
+        const primaryOsc2Phase = previousOsc2Phases[0] ?? voice.oscillator2.phase;
+        const nextVoiceCount = this.defaultUnison.voices;
+        const oscillator1Phases = new Float64Array(nextVoiceCount);
+        const oscillator2Phases = new Float64Array(nextVoiceCount);
+        for (let lane = 0; lane < nextVoiceCount; lane += 1) {
+          oscillator1Phases[lane] = previousOsc1Phases[lane] ?? primaryOsc1Phase;
+          oscillator2Phases[lane] = previousOsc2Phases[lane] ?? primaryOsc2Phase;
+        }
         voice.unison = {
-          voices: this.defaultUnison.voices,
+          voices: nextVoiceCount,
           detune: this.defaultUnison.detune,
           spread: this.defaultUnison.spread,
-          oscillator1Phases: new Float64Array(this.defaultUnison.voices).fill(primaryOsc1Phase),
-          oscillator2Phases: new Float64Array(this.defaultUnison.voices).fill(primaryOsc2Phase),
+          oscillator1Phases,
+          oscillator2Phases,
         };
         voice.phase = primaryOsc1Phase;
         voice.oscillator2.phase = primaryOsc2Phase;
         if (voice.wavetableOscillators) {
           const bank = voice.wavetableOscillators[0].bank;
           const morph = voice.wavetableOscillators[0].morph;
-          voice.wavetableOscillators = Array.from({ length: this.defaultUnison.voices }, (_, lane) => new WavetableOscillator({
+          voice.wavetableOscillators = Array.from({ length: nextVoiceCount }, (_, lane) => new WavetableOscillator({
             bank,
             sampleRate: this.sampleRate,
             frequency: voice.frequency,
-            phase: lane < voice.unison.oscillator1Phases.length ? voice.unison.oscillator1Phases[lane] : primaryOsc1Phase,
+            phase: oscillator1Phases[lane],
             morph,
           }));
         }
