@@ -6,7 +6,7 @@ function wrapPhase(phase) {
 
 function validatePowerOfTwo(value, label) {
   if (!Number.isInteger(value) || value < MIN_TABLE_SIZE || (value & (value - 1)) !== 0) {
-    throw new RangeError(\`\${label} must be a power of two of at least \${MIN_TABLE_SIZE}.\`);
+    throw new RangeError(label + ' must be a power of two of at least ' + MIN_TABLE_SIZE + '.');
   }
 }
 
@@ -29,7 +29,7 @@ export class WavetableBank {
     this.#mask = this.#size - 1;
     this.#frames = frames.map((frame, frameIndex) => {
       if (!(frame instanceof Float32Array) && !Array.isArray(frame)) {
-        throw new TypeError(\`Wavetable frame \${frameIndex} must be a Float32Array or numeric array.\`);
+        throw new TypeError('Wavetable frame ' + frameIndex + ' must be a Float32Array or numeric array.');
       }
       if (frame.length !== this.#size) throw new RangeError('All wavetable frames must have the same length.');
       const copy = Float32Array.from(frame);
