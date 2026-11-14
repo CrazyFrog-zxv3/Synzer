@@ -8,20 +8,20 @@ This increment introduces the first reusable wavetable building block without ch
 
 ## Components
 
-\`packages/dsp-engine/src/core/WavetableOscillator.js\`
+`packages/dsp-engine/src/core/WavetableOscillator.js`
 
-- \`WavetableBank\` owns immutable copies of one or more single-cycle \`Float32Array\` frames.
+- `WavetableBank` owns immutable copies of one or more single-cycle `Float32Array` frames.
 - All frames have the same power-of-two table length (minimum 4 samples).
-- \`sample(phase, morph)\` wraps phase, linearly interpolates adjacent samples and linearly morphs between adjacent frames.
-- \`getFrame(index)\` returns a defensive copy.
-- \`WavetableOscillator\` owns per-instance phase, sample rate, frequency and morph position. It supports phase reset, live frequency/morph changes and rendering into a caller-owned \`Float32Array\`.
-- \`createHarmonicWavetable()\` generates a normalized periodic frame from sinusoidal partials.
+- `sample(phase, morph)` wraps phase, linearly interpolates adjacent samples and linearly morphs between adjacent frames.
+- `getFrame(index)` returns a defensive copy.
+- `WavetableOscillator` owns per-instance phase, sample rate, frequency and morph position. It supports phase reset, live frequency/morph changes and rendering into a caller-owned `Float32Array`.
+- `createHarmonicWavetable()` generates a normalized periodic frame from sinusoidal partials.
 
 ## Safety and numerical constraints
 
 - Sample rate must be at least 8 kHz.
 - Frequency is limited to 45% of sample rate.
-- Morph position is bounded to \`[0, 1]\`.
+- Morph position is bounded to `[0, 1]`.
 - Non-finite table samples, phases, frequencies and amplitudes are rejected.
 - The render path does not allocate per sample.
 
@@ -35,6 +35,6 @@ This increment introduces the first reusable wavetable building block without ch
 
 ## Verification
 
-\`packages/dsp-engine/test/WavetableOscillator.test.js\` covers phase interpolation/wrap, frame morphing, input validation, defensive ownership, phase accumulation, live parameter changes, finite rendering and harmonic table normalization.
+`packages/dsp-engine/test/WavetableOscillator.test.js` covers phase interpolation/wrap, frame morphing, input validation, defensive ownership, phase accumulation, live parameter changes, finite rendering and harmonic table normalization.
 
 The existing Virtual Analog engine and public Pages build remain unchanged by this increment.
