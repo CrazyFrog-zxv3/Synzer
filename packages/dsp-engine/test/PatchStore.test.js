@@ -124,3 +124,65 @@ test('Virtual Analog patch persists pitch modulation route amounts and enable fl
   assert.equal(parameters['engine.virtual-analog.lfo-osc2-pitch-amount'], -7.5);
   assert.equal(parameters['engine.virtual-analog.lfo-osc2-pitch-enabled'], true);
 });
+
+
+test('Virtual Analog patches persist independent EG03 settings and pitch routes', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.pitch-env-attack': 0.025,
+    'engine.virtual-analog.pitch-env-decay': 0.4,
+    'engine.virtual-analog.pitch-env-sustain': 0.2,
+    'engine.virtual-analog.pitch-env-release': 0.7,
+    'engine.virtual-analog.pitch-env-osc1-amount': 24,
+    'engine.virtual-analog.pitch-env-osc1-enabled': true,
+    'engine.virtual-analog.pitch-env-osc2-amount': -12,
+    'engine.virtual-analog.pitch-env-osc2-enabled': false,
+  });
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.pitch-env-attack'], 0.025);
+  assert.equal(restored['engine.virtual-analog.pitch-env-decay'], 0.4);
+  assert.equal(restored['engine.virtual-analog.pitch-env-sustain'], 0.2);
+  assert.equal(restored['engine.virtual-analog.pitch-env-release'], 0.7);
+  assert.equal(restored['engine.virtual-analog.pitch-env-osc1-amount'], 24);
+  assert.equal(restored['engine.virtual-analog.pitch-env-osc1-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.pitch-env-osc2-amount'], -12);
+  assert.equal(restored['engine.virtual-analog.pitch-env-osc2-enabled'], false);
+});
+
+
+test('Virtual Analog patches persist noise enable, color and level', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.noise-enabled': true,
+    'engine.virtual-analog.noise-color': 'pink',
+    'engine.virtual-analog.noise-level': 0.7,
+  });
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.noise-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.noise-color'], 'pink');
+  assert.equal(restored['engine.virtual-analog.noise-level'], 0.7);
+});
+
+
+test('Virtual Analog patches persist unison voice count and detune', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-detune': 18.5,
+  });
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.unison-voices'], 4);
+  assert.equal(restored['engine.virtual-analog.unison-detune'], 18.5);
+});
+
+
+test('Virtual Analog patches persist sub oscillator enable, waveform, level and octave', () => {
+  const patch = createVirtualAnalogPatch({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.sub-wave': 'saw',
+    'engine.virtual-analog.sub-level': 0.65,
+    'engine.virtual-analog.sub-octave': -2,
+  });
+  const restored = applyVirtualAnalogPatch(patch);
+  assert.equal(restored['engine.virtual-analog.sub-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.sub-wave'], 'saw');
+  assert.equal(restored['engine.virtual-analog.sub-level'], 0.65);
+  assert.equal(restored['engine.virtual-analog.sub-octave'], -2);
+});

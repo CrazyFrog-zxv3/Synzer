@@ -17,6 +17,15 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.osc2-octave',
     'engine.virtual-analog.osc2-semitone',
     'engine.virtual-analog.osc2-fine',
+    'engine.virtual-analog.noise-enabled',
+    'engine.virtual-analog.noise-color',
+    'engine.virtual-analog.noise-level',
+    'engine.virtual-analog.sub-enabled',
+    'engine.virtual-analog.sub-wave',
+    'engine.virtual-analog.sub-level',
+    'engine.virtual-analog.sub-octave',
+    'engine.virtual-analog.unison-voices',
+    'engine.virtual-analog.unison-detune',
     'engine.virtual-analog.amp-attack',
     'engine.virtual-analog.amp-decay',
     'engine.virtual-analog.amp-sustain',
@@ -97,6 +106,15 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.osc2-octave': 0,
     'engine.virtual-analog.osc2-semitone': 0,
     'engine.virtual-analog.osc2-fine': 0,
+    'engine.virtual-analog.noise-enabled': false,
+    'engine.virtual-analog.noise-color': 'white',
+    'engine.virtual-analog.noise-level': 0.25,
+    'engine.virtual-analog.sub-enabled': false,
+    'engine.virtual-analog.sub-wave': 'square',
+    'engine.virtual-analog.sub-level': 0.25,
+    'engine.virtual-analog.sub-octave': -1,
+    'engine.virtual-analog.unison-voices': 1,
+    'engine.virtual-analog.unison-detune': 12,
   });
 });
 
@@ -190,4 +208,18 @@ test('second oscillator validates waveform, level and pitch offsets', () => {
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-level': 1.1 }), /range/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-wave': 'noise' }), /choice/i);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.osc2-octave': 3 }), /range/i);
+});
+
+test('sub oscillator parameters validate enable, waveform, level and octave range', () => {
+  const parameters = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.sub-wave': 'square',
+    'engine.virtual-analog.sub-level': 0.35,
+    'engine.virtual-analog.sub-octave': -2,
+  });
+  assert.equal(parameters['engine.virtual-analog.sub-enabled'], true);
+  assert.equal(parameters['engine.virtual-analog.sub-wave'], 'square');
+  assert.equal(parameters['engine.virtual-analog.sub-level'], 0.35);
+  assert.equal(parameters['engine.virtual-analog.sub-octave'], -2);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.sub-octave': 0 }), /range|minimum|maximum/i);
 });
