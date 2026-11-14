@@ -184,6 +184,7 @@ try {
   assert.equal(await page.locator('#unison-detune').inputValue(), '18.5');
   assert.equal(await page.locator('#unison-spread').inputValue(), '65');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'notch');
+  await page.locator('[data-tab="global"]').click();
   await page.locator('#filter-mode').selectOption('allpass');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'allpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
