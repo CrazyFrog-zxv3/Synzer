@@ -157,7 +157,7 @@ The GLOBAL panel now exposes mode, logarithmic cutoff and resonance controls. Th
 
 ### Current limits
 
-This is a second-order multimode SVF, not a full filter suite. No ladder, diode, comb, formant, drive/saturation, self-oscillation, oversampling or filter-envelope modulation is implemented. There is no filter visualization or modulation routing yet. The resonance/Q mapping is a direct DSP parameter, not a calibrated emulation of a specific analog circuit. Device-level CPU, latency and sound quality on Android/POCO remain unverified until tested on physical hardware.
+This is a second-order multimode SVF, not a full filter suite. No ladder, diode, comb, formant, drive/saturation, self-oscillation or oversampling is implemented. There is no filter visualization or modulation routing yet. The resonance/Q mapping is a direct DSP parameter, not a calibrated emulation of a specific analog circuit. Device-level CPU, latency and sound quality on Android/POCO remain unverified until tested on physical hardware.
 
 
 ## Dedicated filter envelope (EG 02)
@@ -200,15 +200,15 @@ The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a wave
 
 A validated modulation-routing layer now sits between per-voice modulation sources and DSP destinations.
 
-Supported sources: `filter-envelope` (EG 02) and `lfo-1`.
+Supported sources: `filter-envelope` (EG 02), `pitch-envelope` (EG 03) and `lfo-1`.
 Supported destinations: `filter-cutoff`, `oscillator-1-pitch` and `oscillator-2-pitch`.
 Each route has a stable ID, source, destination, bipolar amount in semitones and enabled flag. The matrix validates source/destination IDs, route IDs, duplicate IDs, amount bounds and boolean enable state; invalid route updates are rejected atomically. `computeDestination()` sums only enabled routes and returns the destination modulation in semitones.
 
-The Virtual Analog engine now computes filter cutoff modulation through this matrix rather than directly adding source values. Two default routes are registered: `filter-eg-to-cutoff` and `lfo-1-to-cutoff`. Route amounts remain stored in the existing EG/LFO parameters; two new boolean parameters independently enable/disable the routes. This preserves saved patch structure and defaults both routes to enabled with zero depth.
+The Virtual Analog engine now computes filter cutoff modulation through this matrix rather than directly adding source values. Eight fixed routes are registered: EG 02 and LFO 01 to filter cutoff and both oscillator pitches, plus EG 03 to both oscillator pitches. Each route has a typed amount and independent enable flag. Amounts default to zero, preserving saved patch sound.
 
-The MATRIX UI now exposes the two route enable toggles and depth controls. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
+The MATRIX UI exposes each route enable toggle and depth control. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
 
-This is a deliberately bounded matrix: it supports two registered sources and three destinations. Amplitude, pan, wavetable position, user-created route graphs, tempo-synced sources and per-layer routing are not implemented yet.
+This is a deliberately bounded matrix: it supports three registered sources and three destinations. Amplitude, pan, wavetable position, user-created route graphs, tempo-synced sources and per-layer routing are not implemented yet.
 
 
 ### Modulation matrix hot-path optimization
@@ -222,13 +222,37 @@ A second independently configured oscillator is now available per voice. Oscilla
 
 When enabled, the two oscillator signals are mixed with level-weighted normalization `(osc1 + osc2 * level) / (1 + level)` before the per-voice filter, preventing the second oscillator from doubling the maximum single-voice amplitude. Both oscillators share the voice amplitude envelope, filter envelope, LFO and filter path. Oscillator 02 defaults disabled, so existing patches retain the exact single-oscillator sound.
 
-The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, unison stacks, phase offset, sub/noise oscillator or independent envelopes are implemented yet.
+The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and fine controls. Parameters are part of the typed registry and local patch persistence. No oscillator sync, FM, ring modulation, hard sync, unison stacks, phase offset, sub-oscillator or independent oscillator envelopes are implemented yet. The separate white/pink noise generator is documented below.
 
 
 ## Modulation Matrix v2 · oscillator pitch destinations
 
-The Virtual Analog matrix now compiles six fixed routes: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
+The Virtual Analog matrix now compiles eight fixed routes: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch; EG 03 to OSC 01 and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
 
-Per render quantum, route amounts are snapshotted from the compiled matrix. Per sample, the EG/LFO source values produce separate pitch offsets for each oscillator. The offsets modify phase increments exponentially (`2 ** (semitones / 12)`), with oscillator frequency capped at 45% of sample rate; PolyBLEP receives the modulated increment for discontinuous waveforms. OSC 01 and OSC 02 remain independently routable. No pitch glide/smoothing, dynamic user-created route graph, additional modulation sources, or pitch destinations for future engines are claimed.
+Per render quantum, route amounts are snapshotted from the compiled matrix. Per sample, EG 02, EG 03 and LFO source values produce separate pitch offsets for each oscillator. The offsets modify phase increments exponentially (`2 ** (semitones / 12)`), with oscillator frequency capped at 45% of sample rate; PolyBLEP receives the modulated increment for discontinuous waveforms. OSC 01 and OSC 02 remain independently routable. No pitch glide/smoothing, dynamic user-created route graph, additional modulation sources, or pitch destinations for future engines are claimed.
 
-New parameter IDs: `eg-osc1-pitch-amount`, `eg-osc1-pitch-enabled`, `lfo-osc1-pitch-amount`, `lfo-osc1-pitch-enabled`, `eg-osc2-pitch-amount`, `eg-osc2-pitch-enabled`, `lfo-osc2-pitch-amount`, `lfo-osc2-pitch-enabled`, all under `engine.virtual-analog.`. Existing PatchStore schema normalizes missing values to neutral defaults, retaining compatibility with earlier local patches.
+New parameter IDs include the eight pitch routes and the EG 03 ADSR: `pitch-env-attack`, `pitch-env-decay`, `pitch-env-sustain`, `pitch-env-release`, `pitch-env-osc1-amount`, `pitch-env-osc1-enabled`, `pitch-env-osc2-amount`, `pitch-env-osc2-enabled`, all under `engine.virtual-analog.`. EG 03 is independent per voice, has its own ADSR stage, and is summed with the other pitch sources before the exponential frequency conversion. It does not reuse the amplitude or filter envelope. Its default route depths are zero, preserving previous sound. Existing PatchStore schema normalizes missing values to neutral defaults, retaining compatibility with earlier local patches.
+
+
+## Independent pitch envelope · EG 03
+
+The Virtual Analog engine now provides a third per-voice ADSR source dedicated to oscillator pitch. EG 03 has independent attack, decay, sustain and release stages; it does not reuse the amplitude envelope or EG 02. Its bipolar depth is routed independently to OSC 01 and OSC 02 through the modulation matrix, with each destination having its own amount (−48…+48 semitones) and enable flag.
+
+Defaults: attack 5 ms, decay 80 ms, sustain 0, release 80 ms; both pitch-route amounts default to zero. EG 03 therefore remains sonically neutral until a route amount is raised. The envelope state is created on NOTE_ON, released on NOTE_OFF, updated on active voices without resetting its current stage, and included in local patch save/load. Browser smoke verifies the controls and patch round-trip; unit tests verify pitch ratios, independent release, route compilation and defensive state snapshots.
+
+The DSP loop snapshots the two compiled EG 03 route coefficients once per render quantum and advances the envelope once per sample per voice. The informational benchmark includes EG 03 modulation at 12 voices. Desktop benchmark output is not an Android performance claim; physical-device profiling remains outstanding.
+
+
+## Noise Generator · white and pink
+
+The Virtual Analog voice now includes an optional per-voice noise source. It is mixed with OSC 01 and OSC 02 before the shared TPT filter and amplitude ADSR, so it follows the same note lifecycle and filter response. Each voice receives a deterministic non-zero uint32 seed derived from its allocation sequence; this makes test renders repeatable while keeping voices decorrelated. The PRNG is xorshift32.
+
+- `noise-enabled`: boolean, default false.
+- `noise-color`: `white` or `pink`, default `white`.
+- `noise-level`: 0…1 linear, default 0.25.
+
+White noise uses a uniform bipolar sequence. Pink mode uses a multi-pole IIR filter based on the Paul Kellet approximation; it reduces high-frequency energy relative to white noise but is not claimed to be a calibrated 1/f source. Color changes preserve the PRNG stream and pink filter state. The generator is allocated per voice, not shared globally.
+
+When noise is disabled or its level is zero, the renderer retains the prior oscillator mix path bit-for-bit. When active, the three sources are linearly summed and normalized by `1 + osc2Level + noiseLevel`, preventing simple additive peak growth. Noise passes through the existing per-voice filter and amplitude envelope; it has no independent pitch or modulation destination yet. Parameters are typed, included in local patches, restored by the UI, and exercised in the Chromium AudioWorklet smoke test with 12 simultaneous voices.
+
+The informational DSP benchmark now includes 12 active pink-noise generators. Desktop timing is not an ARM64/Android performance claim.

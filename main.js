@@ -94,6 +94,9 @@ function readSynthParameters() {
     'engine.virtual-analog.osc2-octave': Number(document.querySelector('#osc2-octave').value),
     'engine.virtual-analog.osc2-semitone': Number(document.querySelector('#osc2-semitone').value),
     'engine.virtual-analog.osc2-fine': Number(document.querySelector('#osc2-fine').value),
+    'engine.virtual-analog.noise-enabled': document.querySelector('#noise-enabled').checked,
+    'engine.virtual-analog.noise-color': document.querySelector('#noise-color').value,
+    'engine.virtual-analog.noise-level': Number(document.querySelector('#noise-level').value) / 100,
     'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
     'engine.virtual-analog.amp-decay': Number(document.querySelector('#decay').value) / 1000,
     'engine.virtual-analog.amp-sustain': Number(document.querySelector('#sustain').value) / 100,
@@ -110,6 +113,14 @@ function readSynthParameters() {
     'engine.virtual-analog.lfo1-waveform': document.querySelector('#lfo1-waveform').value,
     'engine.virtual-analog.lfo1-amount': Number(document.querySelector('#lfo1-amount').value),
     'engine.virtual-analog.filter-env-route-enabled': document.querySelector('#filter-env-route-enabled').checked,
+    'engine.virtual-analog.pitch-env-attack': Number(document.querySelector('#pitch-env-attack').value) / 1000,
+    'engine.virtual-analog.pitch-env-decay': Number(document.querySelector('#pitch-env-decay').value) / 1000,
+    'engine.virtual-analog.pitch-env-sustain': Number(document.querySelector('#pitch-env-sustain').value) / 100,
+    'engine.virtual-analog.pitch-env-release': Number(document.querySelector('#pitch-env-release').value) / 1000,
+    'engine.virtual-analog.pitch-env-osc1-amount': Number(document.querySelector('#pitch-env-osc1-amount').value),
+    'engine.virtual-analog.pitch-env-osc1-enabled': document.querySelector('#pitch-env-osc1-enabled').checked,
+    'engine.virtual-analog.pitch-env-osc2-amount': Number(document.querySelector('#pitch-env-osc2-amount').value),
+    'engine.virtual-analog.pitch-env-osc2-enabled': document.querySelector('#pitch-env-osc2-enabled').checked,
     'engine.virtual-analog.eg-osc1-pitch-amount': Number(document.querySelector('#eg-osc1-amount').value),
     'engine.virtual-analog.eg-osc1-pitch-enabled': document.querySelector('#eg-osc1-enabled').checked,
     'engine.virtual-analog.eg-osc2-pitch-amount': Number(document.querySelector('#eg-osc2-amount').value),
@@ -195,6 +206,21 @@ function updateFilterEnvelopeGraph() {
   document.querySelector('#filter-env-polarity').textContent = !routeEnabled
     ? 'ROUTE DISABLED'
     : amount > 0 ? 'POSITIVE · OPEN' : amount < 0 ? 'NEGATIVE · CLOSE' : 'NEUTRAL';
+}
+
+function updatePitchEnvelopeGraph() {
+  const attack = Number(document.querySelector('#pitch-env-attack').value);
+  const decay = Number(document.querySelector('#pitch-env-decay').value);
+  const sustain = Number(document.querySelector('#pitch-env-sustain').value) / 100;
+  const release = Number(document.querySelector('#pitch-env-release').value);
+  const attackX = 28 + (attack / 3000) * 110;
+  const decayX = attackX + 42 + (decay / 3000) * 120;
+  const sustainY = 180 - (sustain * 145);
+  const releaseStartX = Math.min(490, Math.max(410, decayX + 100));
+  const releaseEndX = 585 - (release / 3000) * 36;
+  const path = `M0 180 L${attackX} 18 L${decayX} ${sustainY} L${releaseStartX} ${sustainY} L${releaseEndX} 180`;
+  document.querySelector('#pitch-env-path').setAttribute('d', path);
+  document.querySelector('#pitch-env-fill').setAttribute('d', `${path} Z`);
 }
 
 function syncHeldKeys() {
@@ -363,6 +389,13 @@ updateFilterEnvelopeGraph();
 
 function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-waveform').value) {
   const paths = {
+    sine: 'M0 90 C40 10 80 10 120 9Parameters();
+  });
+}
+updateFilterEnvelopeGraph();
+
+function updateLfoWaveformGraph(waveform = document.querySelector('#lfo1-waveform').value) {
+  const paths = {
     sine: 'M0 90 C40 10 80 10 120 90 S200 170 240 90 S320 10 360 90 S440 170 480 90 S560 10 600 90 S640 130 640 90',
     triangle: 'M0 170 L80 10 L160 170 L240 10 L320 170 L400 10 L480 170 L560 10 L640 170',
     square: 'M0 150 H80 V30 H160 V150 H240 V30 H320 V150 H400 V30 H480 V150 H560 V30 H640',
@@ -415,6 +448,27 @@ osc2Fine.addEventListener('input', () => {
 });
 updateOscillator2Readouts();
 
+const noiseEnabled = document.querySelector('#noise-enabled');
+const noiseColor = document.querySelector('#noise-color');
+const noiseLevel = document.querySelector('#noise-level');
+const noiseLevelOutput = document.querySelector('#noise-level-value');
+const unisonVoices = document.querySelector('#unison-voices');
+const unisonDetune = document.querySelector('#unison-detune');
+const unisonDetuneOutput = document.querySelector('#unison-detune-value');
+noiseEnabled.addEventListener('change', applySynthParameters);
+unisonVoices.addEventListener('change', applySynthParameters);
+unisonDetune.addEventListener('input', () => {
+  unisonDetuneOutput.value = `${Number(unisonDetune.value).toFixed(1)} cents`;
+  unisonDetuneOutput.textContent = unisonDetuneOutput.value;
+  applySynthParameters();
+});
+noiseColor.addEventListener('change', applySynthParameters);
+noiseLevel.addEventListener('input', () => {
+  noiseLevelOutput.value = `${noiseLevel.value}%`;
+  noiseLevelOutput.textContent = noiseLevelOutput.value;
+  applySynthParameters();
+});
+
 const lfoWaveform = document.querySelector('#lfo1-waveform');
 const lfoRate = document.querySelector('#lfo1-rate');
 const lfoRateOutput = document.querySelector('#lfo1-rate-value');
@@ -422,6 +476,17 @@ const lfoAmount = document.querySelector('#lfo1-amount');
 const lfoAmountOutput = document.querySelector('#lfo1-amount-value');
 const filterEnvRouteEnabled = document.querySelector('#filter-env-route-enabled');
 const lfoRouteEnabled = document.querySelector('#lfo1-route-enabled');
+for (const [id, unit] of [['pitch-env-attack', 'ms'], ['pitch-env-decay', 'ms'], ['pitch-env-sustain', '%'], ['pitch-env-release', 'ms']]) {
+  const input = document.querySelector(`#${id}`);
+  const output = document.querySelector(`#${id}-value`);
+  input.addEventListener('input', () => {
+    output.value = `${input.value}${unit}`;
+    output.textContent = output.value;
+    updatePitchEnvelopeGraph();
+    applySynthParameters();
+  });
+}
+updatePitchEnvelopeGraph();
 filterEnvRouteEnabled.addEventListener('change', () => {
   updateFilterEnvelopeGraph();
   applySynthParameters();
@@ -431,7 +496,7 @@ lfoRouteEnabled.addEventListener('change', () => {
   applySynthParameters();
 });
 
-for (const route of ['eg-osc1', 'lfo-osc1', 'eg-osc2', 'lfo-osc2']) {
+for (const route of ['eg-osc1', 'lfo-osc1', 'eg-osc2', 'lfo-osc2', 'pitch-env-osc1', 'pitch-env-osc2']) {
   const enabled = document.querySelector(`#${route}-enabled`);
   const amount = document.querySelector(`#${route}-amount`);
   const output = document.querySelector(`#${route}-amount-value`);
@@ -518,7 +583,29 @@ loadPatchButton.addEventListener('click', () => {
     osc2FineOutput.value = `${osc2Fine.value} cents`;
     osc2FineOutput.textContent = osc2FineOutput.value;
     updateOscillator2Readouts();
+    noiseEnabled.checked = parameters['engine.virtual-analog.noise-enabled'];
+    noiseColor.value = parameters['engine.virtual-analog.noise-color'];
+    noiseLevel.value = String(Math.round(parameters['engine.virtual-analog.noise-level'] * 100));
+    noiseLevelOutput.value = `${noiseLevel.value}%`;
+    noiseLevelOutput.textContent = noiseLevelOutput.value;
+    unisonVoices.value = String(parameters['engine.virtual-analog.unison-voices']);
+    unisonDetune.value = String(parameters['engine.virtual-analog.unison-detune']);
+    unisonDetuneOutput.value = `${Number(unisonDetune.value).toFixed(1)} cents`;
+    unisonDetuneOutput.textContent = unisonDetuneOutput.value;
     filterEnvRouteEnabled.checked = parameters['engine.virtual-analog.filter-env-route-enabled'];
+    for (const [id, factor, unit] of [
+      ['pitch-env-attack', 1000, 'ms'],
+      ['pitch-env-decay', 1000, 'ms'],
+      ['pitch-env-sustain', 100, '%'],
+      ['pitch-env-release', 1000, 'ms'],
+    ]) {
+      const input = document.querySelector(`#${id}`);
+      const output = document.querySelector(`#${id}-value`);
+      input.value = String(Math.round(parameters[`engine.virtual-analog.${id}`] * factor));
+      output.value = `${input.value}${unit}`;
+      output.textContent = output.value;
+    }
+    updatePitchEnvelopeGraph();
     document.querySelector('#eg-osc1-enabled').checked = parameters['engine.virtual-analog.eg-osc1-pitch-enabled'];
     document.querySelector('#eg-osc1-amount').value = String(parameters['engine.virtual-analog.eg-osc1-pitch-amount']);
     document.querySelector('#eg-osc1-amount-value').value = `${parameters['engine.virtual-analog.eg-osc1-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.eg-osc1-pitch-amount']} st`;
@@ -535,6 +622,18 @@ loadPatchButton.addEventListener('click', () => {
     document.querySelector('#lfo-osc2-amount').value = String(parameters['engine.virtual-analog.lfo-osc2-pitch-amount']);
     document.querySelector('#lfo-osc2-amount-value').value = `${parameters['engine.virtual-analog.lfo-osc2-pitch-amount'] > 0 ? '+' : ''}${parameters['engine.virtual-analog.lfo-osc2-pitch-amount']} st`;
     document.querySelector('#lfo-osc2-amount-value').textContent = document.querySelector('#lfo-osc2-amount-value').value;
+    for (const [id, amountKey, enabledKey] of [
+      ['pitch-env-osc1', 'engine.virtual-analog.pitch-env-osc1-amount', 'engine.virtual-analog.pitch-env-osc1-enabled'],
+      ['pitch-env-osc2', 'engine.virtual-analog.pitch-env-osc2-amount', 'engine.virtual-analog.pitch-env-osc2-enabled'],
+    ]) {
+      const amount = document.querySelector(`#${id}-amount`);
+      const output = document.querySelector(`#${id}-amount-value`);
+      const value = parameters[amountKey];
+      amount.value = String(value);
+      output.value = `${value > 0 ? '+' : ''}${value} st`;
+      output.textContent = output.value;
+      document.querySelector(`#${id}-enabled`).checked = parameters[enabledKey];
+    }
     lfoRouteEnabled.checked = parameters['engine.virtual-analog.lfo1-route-enabled'];
     filterMode.value = parameters['engine.virtual-analog.filter-mode'];
     filterCutoff.value = String(Math.round(Math.log(parameters['engine.virtual-analog.filter-cutoff'] / 20) / Math.log(1000) * 1000));
@@ -593,34 +692,4 @@ try {
 
 document.querySelector('#stop-all').addEventListener('click', () => {
   for (const pointerId of [...activePointers.keys()]) releasePointer(pointerId);
-  message.textContent = 'Notas liberadas. As caudas ADSR continuam até o fim do release.';
-});
-
-setWaveform('saw');
-updateEnvelopeGraph();
-syncHeldKeys();
-
-window.addEventListener('pagehide', async () => {
-  for (const record of activePointers.values()) {
-    record.released = true;
-    record.button.classList.remove('down');
-  }
-  activePointers.clear();
-  syncHeldKeys();
-
-  state.classList.remove('on');
-  stateLabel.textContent = 'ENGINE CLOSING';
-  workletState.textContent = 'CLOSING';
-  message.textContent = 'Fechando o motor de áudio ao sair desta página.';
-
-  try {
-    await engine.close();
-    stateLabel.textContent = 'ENGINE CLOSED · TOUCH TO RESTART';
-    workletState.textContent = 'CLOSED';
-    message.textContent = 'Motor fechado. Ao voltar, toque no teclado para reinicializar o áudio.';
-  } catch (error) {
-    stateLabel.textContent = 'ENGINE CLOSE ERROR';
-    workletState.textContent = 'CLOSE ERROR';
-    message.textContent = `Falha ao fechar o motor: ${error.message}`;
-  }
-});
+  message.textConten

@@ -592,3 +592,212 @@ test('pitch modulation routes default to neutral and can be disabled independent
   addVoice(candidate, { id: 'pitch-off', frequency: 440, waveform: 'sine' });
   assert.deepEqual(render(candidate, 256).left, render(baseline, 256).left);
 });
+
+test('EG 03 independently modulates oscillator pitch and owns its ADSR state', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0,
+    'engine.virtual-analog.pitch-env-decay': 0,
+    'engine.virtual-analog.pitch-env-sustain': 1,
+    'engine.virtual-analog.pitch-env-release': 0.001,
+    'engine.virtual-analog.pitch-env-osc1-amount': 12,
+    'engine.virtual-analog.pitch-env-osc1-enabled': true,
+    'engine.virtual-analog.pitch-env-osc2-amount': -12,
+    'engine.virtual-analog.pitch-env-osc2-enabled': true,
+    'engine.virtual-analog.osc2-enabled': true,
+  });
+  addVoice(engine, { id: 'eg03', frequency: 440, waveform: 'sine' });
+  render(engine, 1);
+  const voice = engine.getVoice('eg03');
+  assert.equal(voice.pitchEnvelope.stage, 'sustain');
+  assert.equal(voice.pitchEnvelope.level, 1);
+  assert.ok(Math.abs(voice.phase - ((440 * 2) / engine.sampleRate)) < 1e-9);
+  assert.ok(Math.abs(voice.oscillator2.phase - ((440 * 0.5) / engine.sampleRate)) < 1e-9);
+});
+
+test('EG 03 release is independent from the amplitude envelope', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0,
+    'engine.virtual-analog.pitch-env-decay': 0,
+    'engine.virtual-analog.pitch-env-sustain': 1,
+    'engine.virtual-analog.pitch-env-release': 0.001,
+    'engine.virtual-analog.pitch-env-osc1-amount': 12,
+  });
+  addVoice(engine, { id: 'eg03-release', envelope: { attack: 0, decay: 0, sustain: 1, release: 0.02 } });
+  render(engine, 1);
+  assert.equal(engine.noteOff('eg03-release'), true);
+  assert.equal(engine.getVoice('eg03-release').pitchEnvelope.stage, 'release');
+  render(engine, 8);
+  assert.equal(engine.getVoice('eg03-release').pitchEnvelope.stage, 'idle');
+  assert.equal(engine.getVoice('eg03-release').envelopeLevel > 0, true);
+});
+
+test('EG 03 defaults to a sonically neutral route', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  candidate.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0,
+    'engine.virtual-analog.pitch-env-decay': 0,
+    'engine.virtual-analog.pitch-env-sustain': 1,
+    'engine.virtual-analog.pitch-env-release': 0.5,
+  });
+  addVoice(baseline, { id: 'eg03-neutral-base', frequency: 440, waveform: 'sine' });
+  addVoice(candidate, { id: 'eg03-neutral-candidate', frequency: 440, waveform: 'sine' });
+  assert.deepEqual(render(candidate, 512).left, render(baseline, 512).left);
+});
+
+test('live EG 03 parameter updates preserve the active envelope stage and level', () => {
+  const engine = createEngine();
+  engine.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0.1,
+    'engine.virtual-analog.pitch-env-decay': 0.2,
+    'engine.virtual-analog.pitch-env-sustain': 0.4,
+  });
+  addVoice(engine, { id: 'eg03-live' });
+  render(engine, 40);
+  const before = engine.getVoice('eg03-live').pitchEnvelope;
+  engine.setParameters({
+    'engine.virtual-analog.pitch-env-attack': 0.2,
+    'engine.virtual-analog.pitch-env-decay': 0.3,
+    'engine.virtual-analog.pitch-env-sustain': 0.6,
+  });
+  const after = engine.getVoice('eg03-live').pitchEnvelope;
+  assert.equal(after.stage, before.stage);
+  assert.equal(after.level, before.level);
+  assert.equal(after.stageSamples, before.stageSamples);
+});
+
+test('EG 03 state snapshots are defensive', () => {
+  const engine = createEngine();
+  addVoice(engine, { id: 'eg03-snapshot' });
+  const snapshot = engine.getVoice('eg03-snapshot');
+  snapshot.pitchEnvelope.level = 1;
+  snapshot.pitchEnvelope.amount = 48;
+  assert.equal(engine.getVoice('eg03-snapshot').pitchEnvelope.level, 0);
+  assert.equal(engine.getVoice('eg03-snapshot').pitchEnvelope.amount, undefined);
+});
+
+
+test('noise generator adds deterministic white noise per voice before the shared filter and amp envelope', () => {
+  const a = createEngine({ voiceGain: 1 });
+  const b = createEngine({ voiceGain: 1 });
+  const parameters = {
+    'engine.virtual-analog.noise-enabled': true,
+    'engine.virtual-analog.noise-color': 'white',
+    'engine.virtual-analog.noise-level': 1,
+    'engine.virtual-analog.amp-attack': 0,
+    'engine.virtual-analog.amp-decay': 0,
+    'engine.virtual-analog.amp-sustain': 1,
+  };
+  a.setParameters(parameters);
+  b.setParameters(parameters);
+  addVoice(a, { id: 'noise-a', frequency: 440, waveform: 'sine' });
+  addVoice(b, { id: 'noise-b', frequency: 440, waveform: 'sine' });
+  const outputA = render(a, 512).left;
+  const outputB = render(b, 512).left;
+  assert.deepEqual(outputA, outputB);
+  assert.ok(outputA.some((sample) => sample !== 0));
+  assert.ok([...outputA].every(Number.isFinite));
+  assert.equal(a.getVoice('noise-a').noise.enabled, true);
+  assert.equal(a.getVoice('noise-a').noise.color, 'white');
+});
+
+test('pink noise is independent per voice and color changes preserve generator state', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.noise-enabled': true,
+    'engine.virtual-analog.noise-color': 'pink',
+    'engine.virtual-analog.noise-level': 0.5,
+  });
+  addVoice(engine, { id: 'pink-a', frequency: 440, waveform: 'sine' });
+  addVoice(engine, { id: 'pink-b', frequency: 440, waveform: 'sine' });
+  const first = render(engine, 1024).left;
+  assert.ok(first.every(Number.isFinite));
+  assert.ok(first.some((sample) => sample !== 0));
+  engine.setParameters({ 'engine.virtual-analog.noise-color': 'white' });
+  assert.equal(engine.getVoice('pink-a').noise.color, 'white');
+  assert.equal(engine.getVoice('pink-a').noise.level, 0.5);
+});
+
+test('disabled noise preserves the previous oscillator signal bit-for-bit', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  candidate.setParameters({
+    'engine.virtual-analog.noise-enabled': false,
+    'engine.virtual-analog.noise-color': 'pink',
+    'engine.virtual-analog.noise-level': 1,
+  });
+  addVoice(baseline, { id: 'noise-off-base', frequency: 440, waveform: 'sine' });
+  addVoice(candidate, { id: 'noise-off-candidate', frequency: 440, waveform: 'sine' });
+  assert.deepEqual(render(candidate, 512).left, render(baseline, 512).left);
+});
+
+test('unison defaults to one oscillator lane and preserves the original signal', () => {
+  const baseline = createEngine({ voiceGain: 1 });
+  const candidate = createEngine({ voiceGain: 1 });
+  candidate.setParameters({ 'engine.virtual-analog.unison-voices': 1, 'engine.virtual-analog.unison-detune': 24 });
+  addVoice(baseline, { id: 'unison-base', frequency: 440, waveform: 'sine' });
+  addVoice(candidate, { id: 'unison-one', frequency: 440, waveform: 'sine' });
+  assert.deepEqual(render(candidate, 512).left, render(baseline, 512).left);
+  assert.equal(candidate.getVoice('unison-one').unison.voices, 1);
+});
+
+test('unison creates symmetric detuned phase lanes for both oscillators', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({
+    'engine.virtual-analog.osc2-enabled': true,
+    'engine.virtual-analog.unison-voices': 4,
+    'engine.virtual-analog.unison-detune': 12,
+  });
+  addVoice(engine, { id: 'unison-four', frequency: 440, waveform: 'sine' });
+  render(engine, 1);
+  const voice = engine.getVoice('unison-four');
+  const offsets = [-12, -4, 4, 12];
+  assert.equal(voice.unison.voices, 4);
+  assert.deepEqual(voice.unison.oscillator1Phases.map((phase) => phase * engine.sampleRate),
+    offsets.map((cents) => 440 * (2 ** (cents / 1200))));
+  assert.deepEqual(voice.unison.oscillator2Phases.map((phase) => phase * engine.sampleRate),
+    offsets.map((cents) => 440 * (2 ** (cents / 1200))));
+  assert.equal(voice.phase, voice.unison.oscillator1Phases[0]);
+  assert.equal(voice.oscillator2.phase, voice.unison.oscillator2Phases[0]);
+});
+
+test('live unison changes preserve the primary phase and initialize added lanes continuously', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  addVoice(engine, { id: 'unison-live', frequency: 440, waveform: 'sine' });
+  render(engine, 64);
+  const before = engine.getVoice('unison-live').phase;
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 3, 'engine.virtual-analog.unison-detune': 8 });
+  const updated = engine.getVoice('unison-live');
+  assert.equal(updated.phase, before);
+  assert.equal(updated.unison.oscillator1Phases.length, 3);
+  assert.ok(updated.unison.oscillator1Phases.every((phase) => phase === before));
+  render(engine, 1);
+  const after = engine.getVoice('unison-live');
+  assert.equal(after.phase, after.unison.oscillator1Phases[0]);
+  assert.notEqual(after.unison.oscillator1Phases[0], after.unison.oscillator1Phases[2]);
+});
+
+test('unison with zero detune sums coherently and remains finite', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 4, 'engine.virtual-analog.unison-detune': 0 });
+  addVoice(engine, { id: 'unison-zero-detune', frequency: 440, waveform: 'sine' });
+  const output = render(engine, 512).left;
+  assert.ok([...output].every(Number.isFinite));
+  assert.ok(output.some((sample) => sample !== 0));
+});
+
+
+test('live unison detune changes preserve every active phase lane', () => {
+  const engine = createEngine({ voiceGain: 1 });
+  engine.setParameters({ 'engine.virtual-analog.unison-voices': 4, 'engine.virtual-analog.unison-detune': 8 });
+  addVoice(engine, { id: 'unison-detune-live', frequency: 440, waveform: 'sine' });
+  render(engine, 96);
+  const before = engine.getVoice('unison-detune-live').unison;
+  engine.setParameters({ 'engine.virtual-analog.unison-detune': 24 });
+  const after = engine.getVoice('unison-detune-live').unison;
+  assert.deepEqual(after.oscillator1Phases, before.oscillator1Phases);
+  assert.deepEqual(after.oscillator2Phases, before.oscillator2Phases);
+  assert.equal(after.detune, 24);
+});

@@ -67,6 +67,10 @@ try {
   await page.locator('#filter-env-decay').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-sustain').evaluate((input) => { input.value = '35'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-release').evaluate((input) => { input.value = '700'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-attack').evaluate((input) => { input.value = '25'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-decay').evaluate((input) => { input.value = '400'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sustain').evaluate((input) => { input.value = '20'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-release').evaluate((input) => { input.value = '700'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="matrix"]').click();
   await page.locator('#filter-env-amount').evaluate((input) => { input.value = '-24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#filter-env-route-enabled').uncheck();
@@ -78,6 +82,10 @@ try {
   await page.locator('#eg-osc2-amount').evaluate((input) => { input.value = '3'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#lfo-osc2-amount').evaluate((input) => { input.value = '7'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#lfo-osc2-enabled').uncheck();
+  await page.locator('#pitch-env-osc1-amount').evaluate((input) => { input.value = '24'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-osc1-enabled').check();
+  await page.locator('#pitch-env-osc2-amount').evaluate((input) => { input.value = '-12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-osc2-enabled').uncheck();
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('triangle');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -85,6 +93,13 @@ try {
     input.value = '75';
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
+  await page.locator('[data-tab=\"waveform\"]').click();
+  await page.locator('#noise-enabled').check();
+  await page.locator('#noise-color').selectOption('pink');
+  await page.locator('#noise-level').evaluate((input) => { input.value = '70'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#unison-voices').selectOption('4');
+  await page.locator('#unison-detune').evaluate((input) => { input.value = '18.5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('[data-tab=\"modifiers\"]').click();
   await page.locator('#patch-name').fill('Browser Check');
   await page.locator('#save-patch').click();
   await page.waitForFunction(() => {
@@ -102,6 +117,11 @@ try {
   await page.locator('#osc2-octave').selectOption('1');
   await page.locator('#osc2-semitone').evaluate((input) => { input.value = '-5'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#osc2-fine').evaluate((input) => { input.value = '-25'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#noise-enabled').uncheck();
+  await page.locator('#noise-color').selectOption('white');
+  await page.locator('#noise-level').evaluate((input) => { input.value = '10'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#unison-voices').selectOption('1');
+  await page.locator('#unison-detune').evaluate((input) => { input.value = '0'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#master-level').evaluate((input) => {
     input.value = '90';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -135,6 +155,11 @@ try {
   assert.equal(await page.locator('#osc2-octave').inputValue(), '-1');
   assert.equal(await page.locator('#osc2-semitone').inputValue(), '5');
   assert.equal(await page.locator('#osc2-fine').inputValue(), '12');
+  assert.equal(await page.locator('#noise-enabled').isChecked(), true);
+  assert.equal(await page.locator('#noise-color').inputValue(), 'pink');
+  assert.equal(await page.locator('#noise-level').inputValue(), '70');
+  assert.equal(await page.locator('#unison-voices').inputValue(), '4');
+  assert.equal(await page.locator('#unison-detune').inputValue(), '18.5');
   assert.equal(await page.locator('#filter-mode').inputValue(), 'lowpass');
   assert.equal(await page.locator('#filter-cutoff').inputValue(), '500');
   assert.equal(await page.locator('#filter-resonance').inputValue(), '350');
@@ -154,6 +179,14 @@ try {
   assert.equal(await page.locator('#eg-osc2-amount').inputValue(), '3');
   assert.equal(await page.locator('#lfo-osc2-amount').inputValue(), '7');
   assert.equal(await page.locator('#lfo-osc2-enabled').isChecked(), false);
+  assert.equal(await page.locator('#pitch-env-attack').inputValue(), '25');
+  assert.equal(await page.locator('#pitch-env-decay').inputValue(), '400');
+  assert.equal(await page.locator('#pitch-env-sustain').inputValue(), '20');
+  assert.equal(await page.locator('#pitch-env-release').inputValue(), '700');
+  assert.equal(await page.locator('#pitch-env-osc1-amount').inputValue(), '24');
+  assert.equal(await page.locator('#pitch-env-osc1-enabled').isChecked(), true);
+  assert.equal(await page.locator('#pitch-env-osc2-amount').inputValue(), '-12');
+  assert.equal(await page.locator('#pitch-env-osc2-enabled').isChecked(), false);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -215,7 +248,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro e OSC 02, Filter EG, LFO 01, rotas de cutoff e quatro rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e seis rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,
