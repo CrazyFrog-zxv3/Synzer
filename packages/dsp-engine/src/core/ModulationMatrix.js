@@ -1,5 +1,5 @@
 const MODULATION_SOURCES = new Set(['filter-envelope', 'pitch-envelope', 'lfo-1']);
-const MODULATION_DESTINATIONS = new Set(['filter-cutoff', 'oscillator-1-pitch', 'oscillator-2-pitch']);
+const MODULATION_DESTINATIONS = new Set(['filter-cutoff', 'oscillator-1-pitch', 'oscillator-2-pitch', 'sub-oscillator-pitch']);
 
 function normalizeRoute(route) {
   if (!route || typeof route !== 'object' || Array.isArray(route)) {
@@ -48,6 +48,9 @@ export class ModulationMatrix {
     this.pitchEnvelopeOsc1PitchAmount = 0;
     this.pitchEnvelopeOsc2PitchAmount = 0;
     this.lfoOsc2PitchAmount = 0;
+    this.filterEnvelopeSubPitchAmount = 0;
+    this.pitchEnvelopeSubPitchAmount = 0;
+    this.lfoSubPitchAmount = 0;
     for (const route of this.routes) {
       if (!route.enabled) continue;
       if (route.destination === 'filter-cutoff') {
@@ -61,6 +64,10 @@ export class ModulationMatrix {
         if (route.source === 'filter-envelope') this.filterEnvelopeOsc2PitchAmount += route.amount;
         else if (route.source === 'pitch-envelope') this.pitchEnvelopeOsc2PitchAmount += route.amount;
         else if (route.source === 'lfo-1') this.lfoOsc2PitchAmount += route.amount;
+      } else if (route.destination === 'sub-oscillator-pitch') {
+        if (route.source === 'filter-envelope') this.filterEnvelopeSubPitchAmount += route.amount;
+        else if (route.source === 'pitch-envelope') this.pitchEnvelopeSubPitchAmount += route.amount;
+        else if (route.source === 'lfo-1') this.lfoSubPitchAmount += route.amount;
       }
     }
     return this.getRoutes();

@@ -86,3 +86,35 @@ test('modulation matrix compiles pitch envelope routes independently for both os
   assert.equal(matrix.computeDestination('oscillator-1-pitch', { 'pitch-envelope': 1 }), 12);
   assert.equal(matrix.computeDestination('oscillator-2-pitch', { 'pitch-envelope': 1 }), -12);
 });
+
+test('modulation matrix compiles independent Sub pitch routes from EG02, EG03 and LFO01', () => {
+  const matrix = new ModulationMatrix([
+    { id: 'eg-sub', source: 'filter-envelope', destination: 'sub-oscillator-pitch', amount: 7, enabled: true },
+    { id: 'pitch-env-sub', source: 'pitch-envelope', destination: 'sub-oscillator-pitch', amount: -12, enabled: true },
+    { id: 'lfo-sub', source: 'lfo-1', destination: 'sub-oscillator-pitch', amount: 5, enabled: true },
+  ]);
+  assert.equal(matrix.filterEnvelopeSubPitchAmount, 7);
+  assert.equal(matrix.pitchEnvelopeSubPitchAmount, -12);
+  assert.equal(matrix.lfoSubPitchAmount, 5);
+  assert.equal(matrix.computeDestination('sub-oscillator-pitch', {
+    'filter-envelope': 1,
+    'pitch-envelope': 0.5,
+    'lfo-1': -1,
+  }), -4);
+});
+
+test('Sub pitch routes are independently disabled and invalid destination routes are rejected atomically', () => {
+  const matrix = new ModulationMatrix([
+    { id: 'eg-sub', source: 'filter-envelope', destination: 'sub-oscillator-pitch', amount: 7, enabled: true },
+    { id: 'lfo-sub', source: 'lfo-1', destination: 'sub-oscillator-pitch', amount: 5, enabled: true },
+  ]);
+  matrix.setRoute('eg-sub', { enabled: false });
+  assert.equal(matrix.filterEnvelopeSubPitchAmount, 0);
+  assert.equal(matrix.lfoSubPitchAmount, 5);
+  const before = matrix.getRoutes();
+  assert.throws(() => matrix.setRoutes([
+    ...before,
+    { id: 'bad-sub', source: 'lfo-1', destination: 'sub-pitch', amount: 1, enabled: true },
+  ]), /destination/i);
+  assert.deepEqual(matrix.getRoutes(), before);
+});

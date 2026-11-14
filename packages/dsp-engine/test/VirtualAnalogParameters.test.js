@@ -24,6 +24,12 @@ test('Virtual Analog exposes stable typed parameter definitions', () => {
     'engine.virtual-analog.sub-wave',
     'engine.virtual-analog.sub-level',
     'engine.virtual-analog.sub-octave',
+    'engine.virtual-analog.eg-sub-pitch-amount',
+    'engine.virtual-analog.eg-sub-pitch-enabled',
+    'engine.virtual-analog.pitch-env-sub-pitch-amount',
+    'engine.virtual-analog.pitch-env-sub-pitch-enabled',
+    'engine.virtual-analog.lfo-sub-pitch-amount',
+    'engine.virtual-analog.lfo-sub-pitch-enabled',
     'engine.virtual-analog.unison-voices',
     'engine.virtual-analog.unison-detune',
     'engine.virtual-analog.amp-attack',
@@ -113,6 +119,12 @@ test('default Virtual Analog parameters preserve the current engine behavior', (
     'engine.virtual-analog.sub-wave': 'square',
     'engine.virtual-analog.sub-level': 0.25,
     'engine.virtual-analog.sub-octave': -1,
+    'engine.virtual-analog.eg-sub-pitch-amount': 0,
+    'engine.virtual-analog.eg-sub-pitch-enabled': true,
+    'engine.virtual-analog.pitch-env-sub-pitch-amount': 0,
+    'engine.virtual-analog.pitch-env-sub-pitch-enabled': true,
+    'engine.virtual-analog.lfo-sub-pitch-amount': 0,
+    'engine.virtual-analog.lfo-sub-pitch-enabled': true,
     'engine.virtual-analog.unison-voices': 1,
     'engine.virtual-analog.unison-detune': 12,
   });
@@ -222,4 +234,20 @@ test('sub oscillator parameters validate enable, waveform, level and octave rang
   assert.equal(parameters['engine.virtual-analog.sub-level'], 0.35);
   assert.equal(parameters['engine.virtual-analog.sub-octave'], -2);
   assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.sub-octave': 0 }), /range|minimum|maximum/i);
+});
+
+
+test('Sub pitch modulation depths and route enable flags are typed and bounded', () => {
+  const values = normalizeVirtualAnalogParameters({
+    'engine.virtual-analog.eg-sub-pitch-amount': -24,
+    'engine.virtual-analog.pitch-env-sub-pitch-amount': 12,
+    'engine.virtual-analog.lfo-sub-pitch-amount': 7.5,
+    'engine.virtual-analog.lfo-sub-pitch-enabled': false,
+  });
+  assert.equal(values['engine.virtual-analog.eg-sub-pitch-amount'], -24);
+  assert.equal(values['engine.virtual-analog.pitch-env-sub-pitch-amount'], 12);
+  assert.equal(values['engine.virtual-analog.lfo-sub-pitch-amount'], 7.5);
+  assert.equal(values['engine.virtual-analog.lfo-sub-pitch-enabled'], false);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.eg-sub-pitch-amount': 49 }), /range/i);
+  assert.throws(() => normalizeVirtualAnalogParameters({ 'engine.virtual-analog.lfo-sub-pitch-enabled': 1 }), /boolean/i);
 });

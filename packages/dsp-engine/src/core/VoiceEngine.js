@@ -178,6 +178,9 @@ export class VoiceEngine {
       { id: 'lfo-to-osc2-pitch', source: 'lfo-1', destination: 'oscillator-2-pitch', amount: this.parameters['engine.virtual-analog.lfo-osc2-pitch-amount'], enabled: this.parameters['engine.virtual-analog.lfo-osc2-pitch-enabled'] },
       { id: 'pitch-env-to-osc1-pitch', source: 'pitch-envelope', destination: 'oscillator-1-pitch', amount: this.parameters['engine.virtual-analog.pitch-env-osc1-amount'], enabled: this.parameters['engine.virtual-analog.pitch-env-osc1-enabled'] },
       { id: 'pitch-env-to-osc2-pitch', source: 'pitch-envelope', destination: 'oscillator-2-pitch', amount: this.parameters['engine.virtual-analog.pitch-env-osc2-amount'], enabled: this.parameters['engine.virtual-analog.pitch-env-osc2-enabled'] },
+      { id: 'eg-to-sub-pitch', source: 'filter-envelope', destination: 'sub-oscillator-pitch', amount: this.parameters['engine.virtual-analog.eg-sub-pitch-amount'], enabled: this.parameters['engine.virtual-analog.eg-sub-pitch-enabled'] },
+      { id: 'pitch-env-to-sub-pitch', source: 'pitch-envelope', destination: 'sub-oscillator-pitch', amount: this.parameters['engine.virtual-analog.pitch-env-sub-pitch-amount'], enabled: this.parameters['engine.virtual-analog.pitch-env-sub-pitch-enabled'] },
+      { id: 'lfo-to-sub-pitch', source: 'lfo-1', destination: 'sub-oscillator-pitch', amount: this.parameters['engine.virtual-analog.lfo-sub-pitch-amount'], enabled: this.parameters['engine.virtual-analog.lfo-sub-pitch-enabled'] },
     ]);
     const filterParameters = {
       mode: this.parameters['engine.virtual-analog.filter-mode'],
@@ -553,6 +556,9 @@ export class VoiceEngine {
     const lfoOsc2PitchAmount = this.modulationMatrix.lfoOsc2PitchAmount;
     const pitchEnvelopeOsc1PitchAmount = this.modulationMatrix.pitchEnvelopeOsc1PitchAmount;
     const pitchEnvelopeOsc2PitchAmount = this.modulationMatrix.pitchEnvelopeOsc2PitchAmount;
+    const filterEnvelopeSubPitchAmount = this.modulationMatrix.filterEnvelopeSubPitchAmount;
+    const pitchEnvelopeSubPitchAmount = this.modulationMatrix.pitchEnvelopeSubPitchAmount;
+    const lfoSubPitchAmount = this.modulationMatrix.lfoSubPitchAmount;
     for (let i = 0; i < left.length; i++) {
       let mixed = 0;
       for (let voiceIndex = 0; voiceIndex < renderVoices.length; voiceIndex++) {
@@ -641,9 +647,10 @@ export class VoiceEngine {
 
         let subSample = 0;
         if (hasSub) {
+          const subPitchSemitones = osc1PitchSemitones + (filterEnvelopeLevel * filterEnvelopeSubPitchAmount) + (pitchEnvelopeLevel * pitchEnvelopeSubPitchAmount) + (lfoValue * lfoSubPitchAmount);
           const subPhaseIncrement = Math.min(
             this.sampleRate * 0.45,
-            sub.frequency * (2 ** (osc1PitchSemitones / 12)),
+            sub.frequency * (2 ** (subPitchSemitones / 12)),
           ) / this.sampleRate;
           subSample = renderOscillatorSample(sub.waveform, sub.phase, subPhaseIncrement);
           sub.phase += subPhaseIncrement;

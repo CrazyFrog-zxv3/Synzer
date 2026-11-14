@@ -177,7 +177,7 @@ The new envelope parameters are part of the existing Virtual Analog parameter re
 
 The render benchmark now includes a deliberately long, continuously moving filter-envelope ramp across 12 voices, exercising coefficient updates rather than measuring only a static filter.
 
-Limit: cutoff modulation currently recalculates TPT coefficients per sample and per active voice while the envelope is moving. The CI benchmark measures this on its Linux x64 runner; ARM64/Android profiling remains required before deciding whether a coefficient lookup table or block-rate ramp is necessary.
+Cutoff automation uses the shared TPT coefficient lookup table described below, avoiding repeated tangent evaluation. The CI benchmark measures this on Linux x64; ARM64/Android profiling remains required to establish the real-device cost.
 
 
 ## LFO 01 — per-voice low-frequency oscillator
@@ -191,7 +191,7 @@ Parameter IDs:
 - `engine.virtual-analog.lfo1-waveform`
 - `engine.virtual-analog.lfo1-amount`
 
-Rate/waveform/depth changes update active voices while preserving oscillator phase. LFO depth defaults to zero, so existing patches remain sonically unchanged. The source is currently hard-routed to filter cutoff; the general modulation matrix, additional destinations, tempo sync, phase offset, fade-in/delay, and global/free-running LFO modes are not implemented.
+Rate/waveform/depth changes update active voices while preserving oscillator phase. LFO depth defaults to zero, so existing patches remain sonically unchanged. LFO 01 is a registered source in the modulation matrix. Its current destinations are filter cutoff and pitch of OSC 01, OSC 02 and Sub. Tempo sync, phase offset, fade-in/delay, and global/free-running LFO modes are not implemented.
 
 The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a waveform scope. Patch save/load includes the three LFO parameters. Browser smoke verifies persistence/restoration; unit tests verify waveform polarity/range, frequency, phase preservation, per-voice retrigger and live filter modulation.
 
@@ -201,14 +201,14 @@ The MODIFIERS panel exposes waveform, rate and bipolar depth controls and a wave
 A validated modulation-routing layer now sits between per-voice modulation sources and DSP destinations.
 
 Supported sources: `filter-envelope` (EG 02), `pitch-envelope` (EG 03) and `lfo-1`.
-Supported destinations: `filter-cutoff`, `oscillator-1-pitch` and `oscillator-2-pitch`.
+The initial supported destinations were `filter-cutoff`, `oscillator-1-pitch` and `oscillator-2-pitch`; Matrix v4 adds `sub-oscillator-pitch`.
 Each route has a stable ID, source, destination, bipolar amount in semitones and enabled flag. The matrix validates source/destination IDs, route IDs, duplicate IDs, amount bounds and boolean enable state; invalid route updates are rejected atomically. `computeDestination()` sums only enabled routes and returns the destination modulation in semitones.
 
-The Virtual Analog engine now computes filter cutoff modulation through this matrix rather than directly adding source values. Eight fixed routes are registered: EG 02 and LFO 01 to filter cutoff and both oscillator pitches, plus EG 03 to both oscillator pitches. Each route has a typed amount and independent enable flag. Amounts default to zero, preserving saved patch sound.
+In the initial integrated revision, the Virtual Analog engine computed filter cutoff modulation through this matrix rather than directly adding source values. Eight fixed routes were registered at that stage: EG 02 and LFO 01 to filter cutoff and both oscillator pitches, plus EG 03 to both oscillator pitches. Matrix v4 now registers eleven fixed routes, including three Sub pitch routes. Each route has a typed amount and independent enable flag. Amounts default to zero, preserving saved patch sound.
 
 The MATRIX UI exposes each route enable toggle and depth control. EG 02 and LFO 01 source panels display the route state/depth but route editing is centralized in MATRIX. Browser smoke covers saving/restoring route depth and enabled state.
 
-This is a deliberately bounded matrix: it supports three registered sources and three destinations. Amplitude, pan, wavetable position, user-created route graphs, tempo-synced sources and per-layer routing are not implemented yet.
+This remains a deliberately bounded matrix: it supports three registered sources and four destinations. Amplitude, pan, wavetable position, user-created route graphs, tempo-synced sources and per-layer routing are not implemented yet.
 
 
 ### Modulation matrix hot-path optimization
@@ -227,7 +227,7 @@ The WAVEFORM panel exposes OSC 02 enable, waveform, level, octave, semitone and 
 
 ## Modulation Matrix v2 · oscillator pitch destinations
 
-The Virtual Analog matrix now compiles eight fixed routes: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch; EG 03 to OSC 01 and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
+The Matrix v2 revision compiled eight fixed routes at that stage: EG 02 and LFO 01 to filter cutoff, OSC 01 pitch, and OSC 02 pitch; EG 03 to OSC 01 and OSC 02 pitch. Pitch destinations are expressed in bipolar semitones (−48…+48) and each route has an independent typed enable flag and amount parameter. Defaults are neutral (amount 0), preserving legacy patch sound.
 
 Per render quantum, route amounts are snapshotted from the compiled matrix. Per sample, EG 02, EG 03 and LFO source values produce separate pitch offsets for each oscillator. The offsets modify phase increments exponentially (`2 ** (semitones / 12)`), with oscillator frequency capped at 45% of sample rate; PolyBLEP receives the modulated increment for discontinuous waveforms. OSC 01 and OSC 02 remain independently routable. No pitch glide/smoothing, dynamic user-created route graph, additional modulation sources, or pitch destinations for future engines are claimed.
 
@@ -274,7 +274,7 @@ The UI exposes lane count and detune in WAVEFORM; patch save/load and the AudioW
 
 The Virtual Analog engine now provides a dedicated sub oscillator per note, independent from OSC 01/02 and the Unison phase lanes. It supports sine, saw and square waveforms, octave −1 or −2, a linear level control and an enable flag. Square and saw use the same PolyBLEP band-limiting path as the main oscillators.
 
-The sub follows the note frequency one or two octaves below and receives the combined OSC 01 pitch modulation (EG 02, EG 03 and LFO 01). Its phase is independent and preserved when waveform, level or octave changes on active voices. It shares the existing voice filter and amplitude envelope; no separate sub envelope, modulation-matrix destination or stereo spread is implemented.
+The sub follows the note frequency one or two octaves below and receives the combined OSC 01 pitch modulation (EG 02, EG 03 and LFO 01). Its phase is independent and preserved when waveform, level or octave changes on active voices. It shares the existing voice filter and amplitude envelope. Matrix v4 adds three independent Sub pitch routes; a separate Sub envelope and stereo spread are still not implemented.
 
 Defaults: disabled, square, level 0.25, octave −1. Disabled state preserves the prior oscillator signal bit-for-bit. When enabled, Sub is linearly mixed and normalized with OSC 01/02 and Noise. The sub phase advances without rendering a waveform while disabled to avoid unnecessary oscillator work. Parameters are typed and included in local patch save/load; unit tests cover pitch ratio, independent phase, live updates and neutral defaults, while browser smoke covers the UI and patch round-trip.
 
@@ -283,3 +283,10 @@ Defaults: disabled, square, level 0.25, octave −1. Disabled state preserves th
 The TPT state-variable filter no longer evaluates `Math.tan()` on every cutoff automation update. A shared 16,384-interval table spans normalized frequency 0…0.45 cycles/sample; linear interpolation supplies `g = tan(pi × fc / fs)`. The table is initialized once when the module loads and shared by every voice/filter instance. Integrator states are unchanged when cutoff coefficients update.
 
 Regression tests compare the first low-pass sample against the exact tangent equation across sample rates 8–384 kHz and supported cutoff values, with absolute error below 1e−6. A second test replaces `Math.tan` after module initialization and verifies 2,000 cutoff updates do not call it. The Linux x64 maximum-load benchmark remains approximately 0.95 ms/block; repeated runs overlap the prior 0.95 ms baseline, so no measurable desktop speedup is claimed. The optimization removes a transcendental call from the sample update path, but its benefit on ARM64 remains unmeasured.
+
+
+## Sub pitch modulation routes (Matrix v4)
+
+The Sub Oscillator accepts three independent semitone routes: filter envelope (EG 02), pitch envelope (EG 03), and LFO 01. Their typed parameters are `eg-sub-pitch-amount` / `eg-sub-pitch-enabled`, `pitch-env-sub-pitch-amount` / `pitch-env-sub-pitch-enabled`, and `lfo-sub-pitch-amount` / `lfo-sub-pitch-enabled`. Each amount is bipolar −48…+48 semitones and defaults to zero; each enable defaults true. The Sub pitch is calculated as OSC 01's pitch modulation plus these independent route contributions. Thus existing patches retain their previous pitch behavior. The three route amounts are zero by default; route toggles are enabled by default but remain neutral until an amount is raised. The matrix compiles the three coefficients when parameters change; the render loop snapshots them once per quantum and uses them per sample without iterating routes. The controls live in MATRIX, and PatchStore saves/restores all six values through the typed parameter schema. Legacy patches that omit these parameters are normalized to neutral defaults.
+
+The maximum-load Linux x64 benchmark now activates all three Sub routes alongside OSC 01/02, Unison 4, pink Noise, TPT, EG 02/03 and LFO. Across three runs at 48 kHz, 128-sample blocks and 12 voices, mean time ranged from 0.95252 to 0.95527 ms/block and p95 from 0.99690 to 0.99915 ms/block (35.72–35.82% and 37.38–37.47% of the theoretical block budget). This is a desktop reference only, not Android/ARM64 performance evidence.

@@ -186,3 +186,27 @@ test('Virtual Analog patches persist sub oscillator enable, waveform, level and 
   assert.equal(restored['engine.virtual-analog.sub-level'], 0.65);
   assert.equal(restored['engine.virtual-analog.sub-octave'], -2);
 });
+
+
+test('legacy Virtual Analog patches missing Sub pitch routes load with neutral defaults', () => {
+  const legacyPatch = JSON.parse(JSON.stringify(
+    createVirtualAnalogPatch({ 'engine.virtual-analog.sub-enabled': true }, 'Legacy Sub'),
+  ));
+  const keys = [
+    'engine.virtual-analog.eg-sub-pitch-amount',
+    'engine.virtual-analog.eg-sub-pitch-enabled',
+    'engine.virtual-analog.pitch-env-sub-pitch-amount',
+    'engine.virtual-analog.pitch-env-sub-pitch-enabled',
+    'engine.virtual-analog.lfo-sub-pitch-amount',
+    'engine.virtual-analog.lfo-sub-pitch-enabled',
+  ];
+  for (const key of keys) delete legacyPatch.engineSlots[0].parameters[key];
+  const restored = applyVirtualAnalogPatch(legacyPatch);
+  assert.equal(restored['engine.virtual-analog.sub-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.eg-sub-pitch-amount'], 0);
+  assert.equal(restored['engine.virtual-analog.pitch-env-sub-pitch-amount'], 0);
+  assert.equal(restored['engine.virtual-analog.lfo-sub-pitch-amount'], 0);
+  assert.equal(restored['engine.virtual-analog.eg-sub-pitch-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.pitch-env-sub-pitch-enabled'], true);
+  assert.equal(restored['engine.virtual-analog.lfo-sub-pitch-enabled'], true);
+});

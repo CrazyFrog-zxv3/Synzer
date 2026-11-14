@@ -86,6 +86,10 @@ try {
   await page.locator('#pitch-env-osc1-enabled').check();
   await page.locator('#pitch-env-osc2-amount').evaluate((input) => { input.value = '-12'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#pitch-env-osc2-enabled').uncheck();
+  await page.locator('#eg-sub-pitch-amount').evaluate((input) => { input.value = '6'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sub-pitch-amount').evaluate((input) => { input.value = '-9'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sub-pitch-enabled').uncheck();
+  await page.locator('#lfo-sub-pitch-amount').evaluate((input) => { input.value = '3'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#lfo1-waveform').selectOption('triangle');
   await page.locator('#lfo1-rate').evaluate((input) => { input.value = '450'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -152,6 +156,10 @@ try {
   await page.locator('#filter-env-route-enabled').check();
   await page.locator('#lfo1-amount').evaluate((input) => { input.value = '-36'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#lfo1-route-enabled').uncheck();
+  await page.locator('#eg-sub-pitch-amount').evaluate((input) => { input.value = '-18'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sub-pitch-amount').evaluate((input) => { input.value = '18'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#pitch-env-sub-pitch-enabled').check();
+  await page.locator('#lfo-sub-pitch-amount').evaluate((input) => { input.value = '-18'; input.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('[data-tab="modifiers"]').click();
   await page.locator('#load-patch').click();
   assert.equal(await page.locator('#master-level').inputValue(), '42');
@@ -199,6 +207,12 @@ try {
   assert.equal(await page.locator('#pitch-env-osc1-enabled').isChecked(), true);
   assert.equal(await page.locator('#pitch-env-osc2-amount').inputValue(), '-12');
   assert.equal(await page.locator('#pitch-env-osc2-enabled').isChecked(), false);
+  assert.equal(await page.locator('#eg-sub-pitch-amount').inputValue(), '6');
+  assert.equal(await page.locator('#eg-sub-pitch-enabled').isChecked(), true);
+  assert.equal(await page.locator('#pitch-env-sub-pitch-amount').inputValue(), '-9');
+  assert.equal(await page.locator('#pitch-env-sub-pitch-enabled').isChecked(), false);
+  assert.equal(await page.locator('#lfo-sub-pitch-amount').inputValue(), '3');
+  assert.equal(await page.locator('#lfo-sub-pitch-enabled').isChecked(), true);
   assert.equal(await page.locator('#current-patch-title').textContent(), 'Browser Check');
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('synzer.patches.v1')).length), 1);
 
@@ -260,7 +274,7 @@ try {
       'pagehide fechou o áudio e pageshow preservou estado fechado',
       'Primeiro toque após pageshow recriou o motor',
       'Teclado da interface principal iniciou uma nota',
-      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e seis rotas de pitch da Modulation Matrix foram persistidos e restaurados pelo patch local',
+      'Controles de waveform/ADSR/master level/filtro, OSC 02, white/pink Noise Generator, Sub Oscillator, 4-lane Unison, Filter EG, LFO 01, EG 03, rotas de cutoff e nove rotas de pitch da Modulation Matrix, incluindo EG 02/EG 03/LFO 01 para Sub, foram persistidos e restaurados pelo patch local',
     ],
     audioHarness: JSON.parse(harnessDetails),
     responsiveViewports: viewportResults,

@@ -847,3 +847,27 @@ test('live sub oscillator updates preserve phase while changing waveform, level 
   assert.equal(updated.waveform, 'saw');
   assert.equal(updated.level, 0.6);
 });
+
+test('Sub pitch receives independent LFO modulation without changing OSC01 pitch routing', () => {
+  const base = createEngine();
+  base.setParameters({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.lfo1-rate': 20,
+  });
+  const modulated = createEngine();
+  modulated.setParameters({
+    'engine.virtual-analog.sub-enabled': true,
+    'engine.virtual-analog.lfo1-rate': 20,
+    'engine.virtual-analog.lfo-osc1-pitch-amount': 0,
+    'engine.virtual-analog.lfo-sub-pitch-amount': 12,
+    'engine.virtual-analog.lfo-sub-pitch-enabled': true,
+  });
+  addVoice(base, { id: 'sub-base' });
+  addVoice(modulated, { id: 'sub-modulated' });
+  render(base, 128);
+  render(modulated, 128);
+  const basePhase = base.getVoice('sub-base').sub.phase;
+  const modulatedPhase = modulated.getVoice('sub-modulated').sub.phase;
+  assert.notEqual(modulatedPhase, basePhase, 'Sub phase must reflect its independent pitch route');
+  assert.equal(modulated.getVoice('sub-modulated').modulationRoutes.find((route) => route.id === 'lfo-to-sub-pitch').destination, 'sub-oscillator-pitch');
+});

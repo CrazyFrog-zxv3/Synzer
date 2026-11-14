@@ -430,7 +430,7 @@
 
         <section class="view" data-view="matrix" role="tabpanel" hidden>
           <div class="module">
-            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING V2</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
+            <div class="module-head"><div><h3 class="module-title">MODULATION MATRIX · ROUTING V4</h3><p class="module-subtitle">Rotas por voz · profundidade bipolar em semitons</p></div><span class="module-tag">DSP ACTIVE</span></div>
             <div class="module-grid">
               <article class="module">
                 <div class="module-head"><div><h3 class="module-title">SOURCE · EG 02</h3><p class="module-subtitle">Filter envelope → filter cutoff</p></div><span class="module-tag">ROUTE 01</span></div>
@@ -494,8 +494,26 @@
                 <label class="route-enable" for="pitch-env-osc2-enabled"><span>ROUTE ENABLED</span><input id="pitch-env-osc2-enabled" type="checkbox" checked/></label>
                 <div class="control"><div class="control-top"><label for="pitch-env-osc2-amount">PITCH AMOUNT</label><output id="pitch-env-osc2-amount-value">0 st</output></div><input id="pitch-env-osc2-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · modulação por voz</p></div>
               </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 02 → SUB PITCH</h3><p class="module-subtitle">FILTER ENVELOPE → sub oscillator pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>FILTER ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="eg-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="eg-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="eg-sub-pitch-amount">PITCH AMOUNT</label><output id="eg-sub-pitch-amount-value">0 st</output></div><input id="eg-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">EG 03 → SUB PITCH</h3><p class="module-subtitle">PITCH ENVELOPE → sub oscillator pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>PITCH ENVELOPE</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="pitch-env-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="pitch-env-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="pitch-env-sub-pitch-amount">PITCH AMOUNT</label><output id="pitch-env-sub-pitch-amount-value">0 st</output></div><input id="pitch-env-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
+              <article class="module">
+                <div class="module-head"><div><h3 class="module-title">LFO 01 → SUB PITCH</h3><p class="module-subtitle">LOW FREQUENCY OSCILLATOR → sub pitch</p></div><span class="module-tag">SUB ROUTE</span></div>
+                <div class="spec-list"><div class="spec-row"><span>SOURCE</span><strong>LFO 01</strong></div><div class="spec-row"><span>DESTINATION</span><strong>SUB PITCH</strong></div></div>
+                <label class="route-enable" for="lfo-sub-pitch-enabled"><span>ROUTE ENABLED</span><input id="lfo-sub-pitch-enabled" type="checkbox" checked/></label>
+                <div class="control"><div class="control-top"><label for="lfo-sub-pitch-amount">PITCH AMOUNT</label><output id="lfo-sub-pitch-amount-value">0 st</output></div><input id="lfo-sub-pitch-amount" type="range" min="-48" max="48" step="1" value="0"/><p class="control-hint">−48 a +48 semitons · independente de OSC 01</p></div>
+              </article>
             </div>
-            <p class="control-hint" style="margin-top:12px">Matriz v3: EG 02, EG 03 e LFO 01 podem modular cutoff e pitch de OSC 01/02. Cada rota tem profundidade bipolar e ativação independente. As rotas são compiladas no runtime antes do processamento por amostra.</p>
+            <p class="control-hint" style="margin-top:12px">Matriz v4: EG 02, EG 03 e LFO 01 podem modular cutoff, OSC 01, OSC 02 e Sub. As rotas do Sub são independentes da afinação de OSC 01, têm profundidade bipolar e ativação próprias, e são compiladas antes do processamento por amostra.</p>
           </div>
         </section>
         <section class="view" data-view="modifiers" role="tabpanel" hidden>

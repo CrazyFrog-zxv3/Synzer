@@ -101,6 +101,12 @@ function readSynthParameters() {
     'engine.virtual-analog.sub-wave': document.querySelector('#sub-wave').value,
     'engine.virtual-analog.sub-level': Number(document.querySelector('#sub-level').value) / 100,
     'engine.virtual-analog.sub-octave': Number(document.querySelector('#sub-octave').value),
+    'engine.virtual-analog.eg-sub-pitch-amount': Number(document.querySelector('#eg-sub-pitch-amount').value),
+    'engine.virtual-analog.eg-sub-pitch-enabled': document.querySelector('#eg-sub-pitch-enabled').checked,
+    'engine.virtual-analog.pitch-env-sub-pitch-amount': Number(document.querySelector('#pitch-env-sub-pitch-amount').value),
+    'engine.virtual-analog.pitch-env-sub-pitch-enabled': document.querySelector('#pitch-env-sub-pitch-enabled').checked,
+    'engine.virtual-analog.lfo-sub-pitch-amount': Number(document.querySelector('#lfo-sub-pitch-amount').value),
+    'engine.virtual-analog.lfo-sub-pitch-enabled': document.querySelector('#lfo-sub-pitch-enabled').checked,
     'engine.virtual-analog.unison-voices': Number(document.querySelector('#unison-voices').value),
     'engine.virtual-analog.unison-detune': Number(document.querySelector('#unison-detune').value),
     'engine.virtual-analog.amp-attack': Number(document.querySelector('#attack').value) / 1000,
@@ -509,7 +515,7 @@ lfoRouteEnabled.addEventListener('change', () => {
   applySynthParameters();
 });
 
-for (const route of ['eg-osc1', 'lfo-osc1', 'eg-osc2', 'lfo-osc2', 'pitch-env-osc1', 'pitch-env-osc2']) {
+for (const route of ['eg-osc1', 'lfo-osc1', 'eg-osc2', 'lfo-osc2', 'pitch-env-osc1', 'pitch-env-osc2', 'eg-sub-pitch', 'pitch-env-sub-pitch', 'lfo-sub-pitch']) {
   const enabled = document.querySelector(`#${route}-enabled`);
   const amount = document.querySelector(`#${route}-amount`);
   const output = document.querySelector(`#${route}-amount-value`);
@@ -644,6 +650,19 @@ loadPatchButton.addEventListener('click', () => {
     for (const [id, amountKey, enabledKey] of [
       ['pitch-env-osc1', 'engine.virtual-analog.pitch-env-osc1-amount', 'engine.virtual-analog.pitch-env-osc1-enabled'],
       ['pitch-env-osc2', 'engine.virtual-analog.pitch-env-osc2-amount', 'engine.virtual-analog.pitch-env-osc2-enabled'],
+    ]) {
+      const amount = document.querySelector(`#${id}-amount`);
+      const output = document.querySelector(`#${id}-amount-value`);
+      const value = parameters[amountKey];
+      amount.value = String(value);
+      output.value = `${value > 0 ? '+' : ''}${value} st`;
+      output.textContent = output.value;
+      document.querySelector(`#${id}-enabled`).checked = parameters[enabledKey];
+    }
+    for (const [id, amountKey, enabledKey] of [
+      ['eg-sub-pitch', 'engine.virtual-analog.eg-sub-pitch-amount', 'engine.virtual-analog.eg-sub-pitch-enabled'],
+      ['pitch-env-sub-pitch', 'engine.virtual-analog.pitch-env-sub-pitch-amount', 'engine.virtual-analog.pitch-env-sub-pitch-enabled'],
+      ['lfo-sub-pitch', 'engine.virtual-analog.lfo-sub-pitch-amount', 'engine.virtual-analog.lfo-sub-pitch-enabled'],
     ]) {
       const amount = document.querySelector(`#${id}-amount`);
       const output = document.querySelector(`#${id}-amount-value`);

@@ -48,6 +48,12 @@ engine.setParameters({
   'engine.virtual-analog.eg-osc1-pitch-enabled': true,
   'engine.virtual-analog.lfo-osc2-pitch-amount': -5,
   'engine.virtual-analog.lfo-osc2-pitch-enabled': true,
+  'engine.virtual-analog.eg-sub-pitch-amount': 6,
+  'engine.virtual-analog.eg-sub-pitch-enabled': true,
+  'engine.virtual-analog.pitch-env-sub-pitch-amount': -8,
+  'engine.virtual-analog.pitch-env-sub-pitch-enabled': true,
+  'engine.virtual-analog.lfo-sub-pitch-amount': 5,
+  'engine.virtual-analog.lfo-sub-pitch-enabled': true,
 });
 
 for (let index = 0; index < voiceCount; index++) {
@@ -92,12 +98,12 @@ console.log(JSON.stringify({
   waveforms: 'oscillator 1 saw/square/sine mixed + oscillator 2 square at -1 octave',
   oscillator2: 'enabled square, -1 octave, level 0.5',
   noise: '12 independent pink-noise generators, level 0.2, normalized mix',
-  subOscillator: 'square, one octave below, level 0.2, one independent phase per note',
+  subOscillator: 'square, one octave below, level 0.2, one independent phase per note; EG02 +6, EG03 -8 and LFO +5 semitone routes active',
   unison: '4 oscillator lanes per note, symmetric 12-cent detune on OSC 01/02 (maximum supported)',
   filter: 'TPT lowpass, 2.4 kHz, Q 4, per voice',
   filterEnvelope: 'active bipolar +24 semitones, 30 s attack, per voice',
   pitchEnvelope: 'EG 03 active +12/-8 semitones to OSC 01/02, 30 s attack, per voice',
-  lfo: '5 Hz sine, +12 semitones to filter cutoff, per voice',
+  lfo: '5 Hz sine, +12 semitones to filter cutoff and +5 semitones to Sub pitch, per voice',
   measuredBlocks,
   meanMsPerBlock: Number(mean.toFixed(5)),
   p95BatchMsPerBlock: Number(p95.toFixed(5)),
